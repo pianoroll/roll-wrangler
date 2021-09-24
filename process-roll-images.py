@@ -103,13 +103,14 @@ def get_tiff_url(iiif_manifest):
 
 def get_roll_type(iiif_manifest):
     roll_type = "NA"
-    for [label, value] in iiif_manifest["metadata"]:
-        if label == "Description" and "88n" in value:
+    for item in iiif_manifest["metadata"]:
+        if item["label"] == "Description" and "88n" in item["value"]:
             roll_type = "88-note"
-        elif label == "Description" and "65n" in value:
+        elif item["label"] == "Description" and "65n" in item["value"]:
             roll_type = "65-note"
         elif (
-            label == "Description" and "Welte-Mignon red roll (T-100)" in value
+            item["label"] == "Description"
+            and "Welte-Mignon red roll (T-100)" in item["value"]
         ):
             roll_type = "welte-red"
             # Welte roll metadata can also include "Scale: 88n", so stop as
@@ -176,7 +177,7 @@ def parse_roll_image(
         logging.error(f"tiff2holes executable not found in {tiff2holes_dir}")
         return
     if image_filepath is None or roll_type == "NA":
-        logging.info("No image at {image_filepath} or roll type unknown")
+        logging.info(f"No image at {image_filepath} or roll type unknown")
         return
 
     if roll_type == "welte-red":
@@ -191,7 +192,7 @@ def parse_roll_image(
 
     cmd = f"{tiff2holes_dir}/tiff2holes {t2h_switches} {image_filepath} > txt/{druid}.txt 2> logs/{druid}.err"
     logging.info(
-        f"Running image parser on {druid} {image_filepath} {roll_type}"
+        f"Running image parser on {image_filepath} (roll type {roll_type})"
     )
     system(cmd)
 
