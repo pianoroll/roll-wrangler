@@ -36,6 +36,24 @@ Image.MAX_IMAGE_PIXELS = None
 # As new types are added to the collection, their shorthands must be added here
 ROLL_TYPES = ["welte-red", "88-note", "65-note"]
 
+# The downloadable full-resolution monochome TIFF images of several rolls were
+# erroneously mirrored left-right (so that the bass perforations are on the
+# right side of the image). There may be others like this...
+REVERSED_IMAGES = [
+    "yt837kd6607",
+    "ws749sk4778",
+    "hs635sh6729",
+    "zw485gh6070",
+    "xr682fm1233",
+    "mx460bt7026",
+    "cs175wr2428",
+    "bz327kz4744",
+    "wv912mm2332",
+    "jw822wm2644",
+    "fv104hn7521",
+    "fy803vj4057",
+]
+
 # This overrides the --ignore_rewind_hole command line switch; both are used
 # to ignore the detected rewind hole position for a roll when assigning MIDI
 # numbers to hole columns (tracker bar positions); the rewind hole position
@@ -48,7 +66,7 @@ IGNORE_REWIND_HOLE = [
 ]
 
 # These are either duplicates of existing rolls, or rolls that are listed in
-# DRUIDs files but have mysteriously disappeared from the catalog.
+# DRUIDs files but have disappeared from the catalog.
 ROLLS_TO_SKIP = ["rr052wh1991", "hm136vg1420"]
 
 TIFF2HOLES_DIR = "../roll-image-parser/bin/"
@@ -102,11 +120,12 @@ def request_image(image_url):
         response.raw.decode_content = True
         return response
     else:
-        logging.info(f"Unable to download {image_url} - {response}")
+        logging.error(f"Unable to download {image_url} - {response}")
         return None
 
 
-def get_roll_image(image_url, redownload_image=False, mirror_roll=False):
+def get_roll_image(druid, image_url, redownload_image=False, mirror_roll=False):
+    image_already_mirrored = False
     image_fn = re.sub("\.tif$", ".tiff", image_url.split("/")[-1])
     image_filepath = Path(f"images/{image_fn}")
     if not image_filepath.exists() or redownload_image:
@@ -114,8 +133,15 @@ def get_roll_image(image_url, redownload_image=False, mirror_roll=False):
         with open(image_filepath, "wb") as image_file:
             copyfileobj(response.raw, image_file)
         del response
-    if mirror_roll:
-        image_filepath = flip_image_left_right(image_filepath)
+        # Always flip a roll's image on first download if it's known to be
+        # improperly mirrored
+        if druid in REVERSED_IMAGES:
+            flip_image_left_right(image_filepath)
+            image_already_mirrored = True
+    # Don't re-flip the image after the first download, even if specified on
+    # the cmd line -- this would just flip it back to its initial orientation
+    if mirror_roll and not image_already_mirrored:
+        flip_image_left_right(image_filepath)
     return image_filepath
 
 
@@ -124,7 +150,6 @@ def flip_image_left_right(image_filepath):
     im = Image.open(image_filepath)
     out = im.transpose(Image.FLIP_LEFT_RIGHT)
     out.save(image_filepath)
-    return image_filepath
 
 
 def parse_roll_image(
@@ -183,7 +208,8 @@ def extract_midi_from_analysis(druid, regenerate_midi, binasc_dir):
     logging.info(f"Extracting MIDI from txt/{druid}.txt")
     with open(f"txt/{druid}.txt", "r") as analysis:
         contents = analysis.read()
-        # NOTE: the binasc utility *requires* a trailing blank line at the end of the text input
+        # NOTE: the binasc utility *requires* a trailing blank line at the end
+        # of the text input
         holes_data = (
             re.search(r"^@HOLE_MIDIFILE:$(.*)", contents, re.M | re.S)
             .group(1)
@@ -243,7 +269,7 @@ def main():
         "--roll_type",
         choices=ROLL_TYPES,
         default="welte-red",
-        help=f"Type of the roll(s) ({' '.join(ROLL_TYPES)})",
+        help=f"Type of the roll(s) to be downloaded and processed",
     )
     argparser.add_argument(
         "--redownload_manifests",
@@ -312,8 +338,11 @@ def main():
             logging.info(f"Skippig DRUID {druid}")
             continue
 
+        logging.info(f"Downloading and processing {druid}...")
+
         iiif_manifest = get_iiif_manifest(druid, args.redownload_manifests)
         roll_image = get_roll_image(
+            druid,
             get_tiff_url(iiif_manifest),
             args.redownload_images,
             args.mirror_images,
