@@ -172,10 +172,8 @@ def flip_image_left_right(image_filepath):
 def parse_roll_image(
     druid, image_filepath, roll_type, ignore_rewind_hole, tiff2holes_dir
 ):
-    if not Path(f"{tiff2holes_dir}tiff2holes").exists():
-        logging.error(
-            f"tiff2holes executable not found at {tiff2holes_dir}tiff2holes"
-        )
+    if not Path(f"{tiff2holes_dir}/tiff2holes").exists():
+        logging.error(f"tiff2holes executable not found in {tiff2holes_dir}")
         return
     if image_filepath is None or roll_type == "NA":
         logging.info("No image at {image_filepath} or roll type unknown")
@@ -191,7 +189,7 @@ def parse_roll_image(
     if ignore_rewind_hole:
         t2h_switches += " -s"
 
-    cmd = f"{tiff2holes_dir}tiff2holes {t2h_switches} {image_filepath} > txt/{druid}.txt 2> logs/{druid}.err"
+    cmd = f"{tiff2holes_dir}/tiff2holes {t2h_switches} {image_filepath} > txt/{druid}.txt 2> logs/{druid}.err"
     logging.info(
         f"Running image parser on {druid} {image_filepath} {roll_type}"
     )
@@ -199,14 +197,14 @@ def parse_roll_image(
 
 
 def convert_binasc_to_midi(binasc_data, druid, midi_type, binasc_dir):
-    if not Path(f"{binasc_dir}binasc").exists():
-        logging.error(f"binasc executable not found at {binasc_dir}binasc")
+    if not Path(f"{binasc_dir}/binasc").exists():
+        logging.error(f"binasc executable not found in {binasc_dir}")
         return
     binasc_file_path = f"binasc/{druid}_{midi_type}.binasc"
     with open(binasc_file_path, "w") as binasc_file:
         binasc_file.write(binasc_data)
-    if Path(f"{binasc_dir}binasc").exists():
-        cmd = f"{binasc_dir}binasc {binasc_file_path} -c midi/{midi_type}/{druid}_{midi_type}.mid"
+    if Path(f"{binasc_dir}/binasc").exists():
+        cmd = f"{binasc_dir}/binasc {binasc_file_path} -c midi/{midi_type}/{druid}_{midi_type}.mid"
         system(cmd)
 
 
@@ -242,10 +240,8 @@ def extract_midi_from_analysis(druid, regenerate_midi, binasc_dir):
 
 
 def apply_midi_expressions(druid, roll_type, midi2exp_dir):
-    if not Path(f"{midi2exp_dir}midi2exp").exists():
-        logging.error(
-            f"midi2exp executable not found at {midi2exp_dir}midi2exp"
-        )
+    if not Path(f"{midi2exp_dir}/midi2exp").exists():
+        logging.error(f"midi2exp executable not found in {midi2exp_dir}")
         return
     if not Path(f"midi/note/{druid}_note.mid").exists():
         logging.error(
@@ -257,7 +253,7 @@ def apply_midi_expressions(druid, roll_type, midi2exp_dir):
     m2e_switches = ""
     if roll_type == "welte-red":
         m2e_switches = "-w -r -adjust-hole-lengths"  # add --ac 0 for no acceleration, when available
-    cmd = f"{midi2exp_dir}midi2exp {m2e_switches} midi/note/{druid}_note.mid midi/exp/{druid}_exp.mid"
+    cmd = f"{midi2exp_dir}/midi2exp {m2e_switches} midi/note/{druid}_note.mid midi/exp/{druid}_exp.mid"
     logging.info(f"Running expression extraction on midi/note/{druid}_note.mid")
     system(cmd)
     return True
