@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 
 """ This script produces raw, note, and (if desired) expressionized MIDI    """
-""" files (written to subfolders of midi/ ), as well as a hole analysis     """
+""" files (written to subfolders of midi/), as well as a hole analysis      """
 """ output file (written to the txt/ folder) for each specified piano roll. """
 """ Rolls to be processed can be specified by DRUID on the command line     """
 """ (separated by spaces) or in a CSV file (DRUIDs in the "Druid" column).  """
 """ For each roll, the script downloads the roll's MODS metadata file, its  """
 """ IIIF manifest, and the roll image TIFF file from the SDR (if these are  """
-""" not already cached).                                                    """
+""" not already cached in subfolders).                                      """
 """ The script then uses the tiff2holes executable from                     """
 """ https://github.com/pianoroll/roll-image-parser to perform the image/    """
 """ hole-parsing analysis, then extracts the binasc-encoded raw and note    """
@@ -99,6 +99,23 @@ def get_tiff_url(iiif_manifest):
         ):
             return rendering["@id"]
     return None
+
+
+def get_roll_type(iiif_manifest):
+    roll_type = "NA"
+    for [label, value] in iiif_manifest["metadata"]:
+        if label == "Description" and "88n" in value:
+            roll_type = "88-note"
+        elif label == "Description" and "65n" in value:
+            roll_type = "65-note"
+        elif (
+            label == "Description" and "Welte-Mignon red roll (T-100)" in value
+        ):
+            roll_type = "welte-red"
+            # Welte roll metadata can also include "Scale: 88n", so stop as
+            # soon as we see that it's a T-100 roll
+            break
+    return roll_type
 
 
 def get_druids_from_file(druids_fp):
@@ -265,13 +282,6 @@ def main():
         help="Path to a CSV file listing rolls, with DRUIDs in the 'Druid' column",
     )
     argparser.add_argument(
-        "-t",
-        "--roll_type",
-        choices=ROLL_TYPES,
-        default="welte-red",
-        help=f"Type of the roll(s) to be downloaded and processed",
-    )
-    argparser.add_argument(
         "--redownload_manifests",
         action="store_true",
         help="Always download IIIF manifests, overwriting files in manifests/",
@@ -348,11 +358,14 @@ def main():
             args.mirror_images,
         )
 
+        roll_type = get_roll_type(iiif_manifest)
+        logging.info(f"Roll type for {druid} is {roll_type}")
+
         if args.reprocess_images or not Path(f"txt/{druid}.txt").exists():
             parse_roll_image(
                 druid,
                 roll_image,
-                args.roll_type,
+                roll_type,
                 args.ignore_rewind_hole or (druid in IGNORE_REWIND_HOLE),
                 args.tiff2holes_dir,
             )
@@ -360,7 +373,7 @@ def main():
         extract_midi_from_analysis(druid, args.regenerate_midi, args.binasc_dir)
 
         if not args.no_expression:
-            apply_midi_expressions(druid, args.roll_type, args.midi2exp_dir)
+            apply_midi_expressions(druid, roll_type, args.midi2exp_dir)
 
 
 if __name__ == "__main__":
