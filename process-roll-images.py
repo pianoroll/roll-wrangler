@@ -34,7 +34,7 @@ import requests
 Image.MAX_IMAGE_PIXELS = None
 
 # As new types are added to the collection, their shorthands must be added here
-ROLL_TYPES = ["welte-red", "88-note", "65-note"]
+ROLL_TYPES = ["welte-red", "88-note", "65-note", "welte-green", "welte-licensee"]
 
 # The downloadable full-resolution monochome TIFF images of several rolls were
 # erroneously mirrored left-right (so that the bass perforations are on the
@@ -81,15 +81,19 @@ def get_iiif_manifest(druid, redownload_manifests=True):
     if iiif_filepath.exists() and not redownload_manifests:
         iiif_manifest = json.load(open(iiif_filepath, "r"))
     else:
-        response = requests.get(f"{PURL_BASE}{druid}/iiif/manifest")
-        iiif_manifest = response.json()
-        with iiif_filepath.open("w") as _fh:
-            json.dump(iiif_manifest, _fh)
+        try:
+            response = requests.get(f"{PURL_BASE}{druid}/iiif/manifest")
+            iiif_manifest = response.json()
+            with iiif_filepath.open("w") as _fh:
+                json.dump(iiif_manifest, _fh)
+        except:
+            logging.info(f"Unable to download IIIF manifest for {druid}")
+            iiif_manifest = None
     return iiif_manifest
 
 
 def get_tiff_url(iiif_manifest):
-    if "rendering" not in iiif_manifest["sequences"][0]:
+    if iiif_manifest is None or "rendering" not in iiif_manifest["sequences"][0]:
         return None
 
     for rendering in iiif_manifest["sequences"][0]["rendering"]:
@@ -119,15 +123,27 @@ def get_roll_type(iiif_manifest):
     return roll_type
 
 
-def get_druids_from_file(druids_fp):
+def get_druids_from_csv_file(druids_fp):
     if not Path(druids_fp).exists():
-        logging.error(f"Unable to find DRUID CSV file {druids_fp}")
+        logging.error(f"Unable to find DRUIDs file {druids_fp}")
         return []
     druids_list = []
     with open(druids_fp, "r", newline="") as druid_csv:
         druid_reader = DictReader(druid_csv)
         for row in druid_reader:
             druids_list.append(row["Druid"])
+    return druids_list
+
+
+def get_druids_from_txt_file(druids_fp):
+    print(druids_fp)
+    if not Path(druids_fp).exists():
+        logging.error(f"Unable to find DRUIDs file {druids_fp}")
+        return []
+    druids_list = []
+    with open(druids_fp, "r") as druid_txt:
+        for line in druid_txt:
+            druids_list.append(line.strip())
     return druids_list
 
 
@@ -144,8 +160,13 @@ def request_image(image_url):
 
 def get_roll_image(druid, image_url, redownload_image=False, mirror_roll=False):
     image_already_mirrored = False
-    image_fn = re.sub("\.tif$", ".tiff", image_url.split("/")[-1])
-    image_filepath = Path(f"images/{image_fn}")
+    # If we couldn't get the image URL from the IIIF manifest, assume it's
+    # already stored locally and has a regular filename structure
+    if image_url is None:
+        image_filepath = Path(f"images/{druid}_0001.tiff")
+    else:
+        image_fn = re.sub("\.tif$", ".tiff", image_url.split("/")[-1])
+        image_filepath = Path(f"images/{image_fn}")
     if not image_filepath.exists() or redownload_image:
         response = request_image(image_url)
         with open(image_filepath, "wb") as image_file:
@@ -171,7 +192,7 @@ def flip_image_left_right(image_filepath):
 
 
 def parse_roll_image(
-    druid, image_filepath, roll_type, ignore_rewind_hole, tiff2holes_dir
+    druid, image_filepath, roll_type, ignore_rewind_hole, tiff2holes_dir, is_monochrome
 ):
     if not Path(f"{tiff2holes_dir}/tiff2holes").exists():
         logging.error(f"tiff2holes executable not found in {tiff2holes_dir}")
@@ -180,12 +201,21 @@ def parse_roll_image(
         logging.info(f"No image at {image_filepath} or roll type unknown")
         return
 
+    t2h_switches = ""
+
+    if is_monochrome:
+        t2h_switches = "-m "
+
     if roll_type == "welte-red":
-        t2h_switches = "-m -r"
+        t2h_switches += "-r"
     elif roll_type == "88-note":
-        t2h_switches = "-m -8"
+        t2h_switches += "-8"
     elif roll_type == "65-note":
-        t2h_switches = "-m -5"
+        t2h_switches += "-5"
+    elif roll_type == "welte-green":
+        t2h_switches += "-g"
+    elif roll_type == "welte-licensee":
+        t2h_switches += "-l"
 
     if ignore_rewind_hole:
         t2h_switches += " -s"
@@ -251,9 +281,13 @@ def apply_midi_expressions(druid, roll_type, midi2exp_dir):
         return
 
     # The -r switch removes the control tracks (3-4, 0-indexed)
-    m2e_switches = ""
+    m2e_switches = "-r -adjust-hole-lengths"
     if roll_type == "welte-red":
-        m2e_switches = "-w -r -adjust-hole-lengths"  # add --ac 0 for no acceleration, when available
+        m2e_switches += " -w"  # add --ac 0 for no acceleration, when available
+    elif roll_type == "welte-green":
+        m2e_switches += " -g"  # add --ac 0 for no acceleration, when available
+    elif roll_type == "welte-licensee":
+        m2e_switches += " -l"  # add --ac 0 for no acceleration, when available
     cmd = f"{midi2exp_dir}/midi2exp {m2e_switches} midi/note/{druid}_note.mid midi/exp/{druid}_exp.mid"
     logging.info(f"Running expression extraction on midi/note/{druid}_note.mid")
     system(cmd)
@@ -274,9 +308,26 @@ def main():
         help="DRUID(s) of one or more rolls to be processed, separated by spaces",
     )
     argparser.add_argument(
-        "-f",
+        "-t",
+        "--roll_type",
+        choices=ROLL_TYPES,
+        default="NA",
+        help=f"Type of the roll(s) ({' '.join(ROLL_TYPES)})",
+    )
+    argparser.add_argument(
+        "-c",
         "--druids_csv_file",
         help="Path to a CSV file listing rolls, with DRUIDs in the 'Druid' column",
+    )
+    argparser.add_argument(
+        "-f",
+        "--druids_txt_file",
+        help="Path to a plain text file listing DRUIDs to be processed, one per line",
+    )
+    argparser.add_argument(
+        "--multichannel_tiffs",
+        action="store_true",
+        help="Set if the TIFF images to be processed are RGB, not monochrome",
     )
     argparser.add_argument(
         "--redownload_manifests",
@@ -334,10 +385,16 @@ def main():
     # Adding DRUIDs here will override user input
     DRUIDS = []
 
-    if "druids" in args:
+    print(args)
+
+    if len(args.druids) > 0:
         DRUIDS = args.druids
-    elif "druids_csv_file" in args:
-        DRUIDS = get_druids_from_file(args.druids_file)
+    elif args.druids_csv_file is not None:
+        DRUIDS = get_druids_from_csv_file(args.druids_csv_file)
+    elif args.druids_txt_file is not None:
+        DRUIDS = get_druids_from_txt_file(args.druids_txt_file)
+
+    print(DRUIDS)
 
     for druid in DRUIDS:
 
@@ -355,8 +412,11 @@ def main():
             args.mirror_images,
         )
 
-        roll_type = get_roll_type(iiif_manifest)
-        logging.info(f"Roll type for {druid} is {roll_type}")
+        if args.roll_type != "NA":
+            roll_type = args.roll_type
+        else:
+            roll_type = get_roll_type(iiif_manifest)
+            logging.info(f"Roll type for {druid} is {roll_type}")
 
         if args.reprocess_images or not Path(f"txt/{druid}.txt").exists():
             parse_roll_image(
@@ -365,6 +425,7 @@ def main():
                 roll_type,
                 args.ignore_rewind_hole or (druid in IGNORE_REWIND_HOLE),
                 args.tiff2holes_dir,
+                not args.multichannel_tiffs,
             )
 
         extract_midi_from_analysis(druid, args.regenerate_midi, args.binasc_dir)
