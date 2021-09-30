@@ -1,22 +1,25 @@
 #!/usr/bin/env python3
 
-""" This script produces raw, note, and (if desired) expressionized MIDI    """
-""" files (written to subfolders of midi/), as well as a hole analysis      """
-""" output file (written to the txt/ folder) for each specified piano roll. """
-""" Rolls to be processed can be specified by DRUID on the command line     """
-""" (separated by spaces) or in a CSV file (DRUIDs in the "Druid" column).  """
-""" For each roll, the script downloads the roll's MODS metadata file, its  """
-""" IIIF manifest, and the roll image TIFF file from the SDR (if these are  """
-""" not already cached in subfolders).                                      """
-""" The script then uses the tiff2holes executable from                     """
-""" https://github.com/pianoroll/roll-image-parser to perform the image/    """
-""" hole-parsing analysis, then extracts the binasc-encoded raw and note    """
-""" MIDI data from the analysis file.                                       """
-""" The external binasc tool (https://github.com/craigsapp/binasc) is used  """
-""" to convert the extracted MIDI data to binary MIDI files.                """
-""" Then, if desired, the the midi2exp executable from                      """
-""" https://github.com/pianoroll/midi2exp/ generates expressionized MIDI    """
-""" files.                                                                  """
+"""
+This script produces raw, note, and (if desired) expressionized MIDI files 
+(written to subfolders of midi/), as well as a hole analysis output file
+(written to the txt/ folder) for each specified piano roll. Rolls to be
+processed can be specified by DRUID on the command line (separated by spaces)
+or in a plain-text file (one DRUID per line) or a CSV file (DRUIDs in the
+"Druid" column). For each roll, the script downloads the roll's MODS metadata
+file, its IIIF manifest, and the roll image TIFF file from the SDR (if these
+are not already cached in subfolders). Advanced features are also available to
+process locally downloaded TIFF image files if they have not yet been
+accessioned into the SDR.
+The script uses the tiff2holes executable from
+https://github.com/pianoroll/roll-image-parser to perform the image hole-
+parsing analysis, then extracts the binasc-encoded raw and note MIDI data from
+the analysis file.
+The external binasc tool (https://github.com/craigsapp/binasc) is used to
+convert the extracted MIDI data to binary MIDI files. Then, if desired, the
+midi2exp executable from https://github.com/pianoroll/midi2exp/ generates
+expressionized MIDI files.
+"""
 
 import argparse
 from csv import DictReader
@@ -34,7 +37,13 @@ import requests
 Image.MAX_IMAGE_PIXELS = None
 
 # As new types are added to the collection, their shorthands must be added here
-ROLL_TYPES = ["welte-red", "88-note", "65-note", "welte-green", "welte-licensee"]
+ROLL_TYPES = [
+    "welte-red",
+    "88-note",
+    "65-note",
+    "welte-green",
+    "welte-licensee",
+]
 
 # The downloadable full-resolution monochome TIFF images of several rolls were
 # erroneously mirrored left-right (so that the bass perforations are on the
@@ -69,9 +78,9 @@ IGNORE_REWIND_HOLE = [
 # DRUIDs files but have disappeared from the catalog.
 ROLLS_TO_SKIP = ["rr052wh1991", "hm136vg1420"]
 
-TIFF2HOLES_DIR = "../roll-image-parser/bin/"
-BINASC_DIR = "../binasc/"
-MIDI2EXP_DIR = "../midi2exp/bin/"
+TIFF2HOLES = "../roll-image-parser/bin/tiff2holes"
+BINASC = "../binasc/binasc"
+MIDI2EXP = "../midi2exp/bin/midi2exp"
 
 PURL_BASE = "https://purl.stanford.edu/"
 
@@ -93,7 +102,10 @@ def get_iiif_manifest(druid, redownload_manifests=True):
 
 
 def get_tiff_url(iiif_manifest):
-    if iiif_manifest is None or "rendering" not in iiif_manifest["sequences"][0]:
+    if (
+        iiif_manifest is None
+        or "rendering" not in iiif_manifest["sequences"][0]
+    ):
         return None
 
     for rendering in iiif_manifest["sequences"][0]["rendering"]:
@@ -192,10 +204,15 @@ def flip_image_left_right(image_filepath):
 
 
 def parse_roll_image(
-    druid, image_filepath, roll_type, ignore_rewind_hole, tiff2holes_dir, is_monochrome
+    druid,
+    image_filepath,
+    roll_type,
+    ignore_rewind_hole,
+    tiff2holes,
+    is_monochrome,
 ):
-    if not Path(f"{tiff2holes_dir}/tiff2holes").exists():
-        logging.error(f"tiff2holes executable not found in {tiff2holes_dir}")
+    if not Path(tiff2holes).exists():
+        logging.error(f"tiff2holes executable not found at {tiff2holes}")
         return
     if image_filepath is None or roll_type == "NA":
         logging.info(f"No image at {image_filepath} or roll type unknown")
@@ -220,26 +237,26 @@ def parse_roll_image(
     if ignore_rewind_hole:
         t2h_switches += " -s"
 
-    cmd = f"{tiff2holes_dir}/tiff2holes {t2h_switches} {image_filepath} > txt/{druid}.txt 2> logs/{druid}.err"
+    cmd = f"{tiff2holes} {t2h_switches} {image_filepath} > txt/{druid}.txt 2> logs/{druid}.err"
     logging.info(
         f"Running image parser on {image_filepath} (roll type {roll_type})"
     )
     system(cmd)
 
 
-def convert_binasc_to_midi(binasc_data, druid, midi_type, binasc_dir):
-    if not Path(f"{binasc_dir}/binasc").exists():
-        logging.error(f"binasc executable not found in {binasc_dir}")
+def convert_binasc_to_midi(binasc_data, druid, midi_type, binasc):
+    if not Path(binasc).exists():
+        logging.error(f"binasc executable not found at {binasc}")
         return
     binasc_file_path = f"binasc/{druid}_{midi_type}.binasc"
     with open(binasc_file_path, "w") as binasc_file:
         binasc_file.write(binasc_data)
-    if Path(f"{binasc_dir}/binasc").exists():
-        cmd = f"{binasc_dir}/binasc {binasc_file_path} -c midi/{midi_type}/{druid}_{midi_type}.mid"
+    if Path(binasc).exists():
+        cmd = f"{binasc} {binasc_file_path} -c midi/{midi_type}/{druid}_{midi_type}.mid"
         system(cmd)
 
 
-def extract_midi_from_analysis(druid, regenerate_midi, binasc_dir):
+def extract_midi_from_analysis(druid, regenerate_midi, binasc):
     if not Path(f"txt/{druid}.txt").exists():
         logging.error(
             f"Hole analysis report does not exist at txt/{druid}.txt, cannot extract MIDI"
@@ -261,18 +278,18 @@ def extract_midi_from_analysis(druid, regenerate_midi, binasc_dir):
             .group(1)
             .split("\n@")[0]
         )
-        convert_binasc_to_midi(holes_data, druid, "raw", binasc_dir)
+        convert_binasc_to_midi(holes_data, druid, "raw", binasc)
         notes_data = (
             re.search(r"^@MIDIFILE:$(.*)", contents, re.M | re.S)
             .group(1)
             .split("\n@")[0]
         )
-        convert_binasc_to_midi(notes_data, druid, "note", binasc_dir)
+        convert_binasc_to_midi(notes_data, druid, "note", binasc)
 
 
-def apply_midi_expressions(druid, roll_type, midi2exp_dir):
-    if not Path(f"{midi2exp_dir}/midi2exp").exists():
-        logging.error(f"midi2exp executable not found in {midi2exp_dir}")
+def apply_midi_expressions(druid, roll_type, midi2exp):
+    if not Path(midi2exp).exists():
+        logging.error(f"midi2exp executable not found at {midi2exp}")
         return
     if not Path(f"midi/note/{druid}_note.mid").exists():
         logging.error(
@@ -288,7 +305,7 @@ def apply_midi_expressions(druid, roll_type, midi2exp_dir):
         m2e_switches += " -g"  # add --ac 0 for no acceleration, when available
     elif roll_type == "welte-licensee":
         m2e_switches += " -l"  # add --ac 0 for no acceleration, when available
-    cmd = f"{midi2exp_dir}/midi2exp {m2e_switches} midi/note/{druid}_note.mid midi/exp/{druid}_exp.mid"
+    cmd = f"{midi2exp} {m2e_switches} midi/note/{druid}_note.mid midi/exp/{druid}_exp.mid"
     logging.info(f"Running expression extraction on midi/note/{druid}_note.mid")
     system(cmd)
     return True
@@ -365,19 +382,19 @@ def main():
         help="Do not apply expression emulation to create _exp.mid MIDI files (preexisting files will remain)",
     )
     argparser.add_argument(
-        "--tiff2holes_dir",
-        default=TIFF2HOLES_DIR,
-        help="Folder containing a compiled tiff2holes binary",
+        "--tiff2holes",
+        default=TIFF2HOLES,
+        help="Location of a compiled tiff2holes binary",
     )
     argparser.add_argument(
-        "--binasc_dir",
-        default=BINASC_DIR,
-        help="Folder containing a compiled binasc binary",
+        "--binasc",
+        default=BINASC,
+        help="Location of a compiled binasc binary",
     )
     argparser.add_argument(
-        "--midi2exp_dir",
-        default=MIDI2EXP_DIR,
-        help="Folder containing a compiled midi2exp binary",
+        "--midi2exp",
+        default=MIDI2EXP,
+        help="Location of a compiled midi2exp binary",
     )
 
     args = argparser.parse_args()
@@ -424,14 +441,14 @@ def main():
                 roll_image,
                 roll_type,
                 args.ignore_rewind_hole or (druid in IGNORE_REWIND_HOLE),
-                args.tiff2holes_dir,
+                args.tiff2holes,
                 not args.multichannel_tiffs,
             )
 
-        extract_midi_from_analysis(druid, args.regenerate_midi, args.binasc_dir)
+        extract_midi_from_analysis(druid, args.regenerate_midi, args.binasc)
 
         if not args.no_expression:
-            apply_midi_expressions(druid, roll_type, args.midi2exp_dir)
+            apply_midi_expressions(druid, roll_type, args.midi2exp)
 
 
 if __name__ == "__main__":
