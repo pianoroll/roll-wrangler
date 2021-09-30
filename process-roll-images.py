@@ -148,7 +148,6 @@ def get_druids_from_csv_file(druids_fp):
 
 
 def get_druids_from_txt_file(druids_fp):
-    print(druids_fp)
     if not Path(druids_fp).exists():
         logging.error(f"Unable to find DRUIDs file {druids_fp}")
         return []
@@ -160,6 +159,9 @@ def get_druids_from_txt_file(druids_fp):
 
 
 def request_image(image_url):
+    if image_url is None:
+        logging.error("Image URL is None")
+        return None
     logging.info(f"Downloading roll image {image_url}")
     response = requests.get(image_url, stream=True)
     if response.status_code == 200:
@@ -181,8 +183,9 @@ def get_roll_image(druid, image_url, redownload_image=False, mirror_roll=False):
         image_filepath = Path(f"images/{image_fn}")
     if not image_filepath.exists() or redownload_image:
         response = request_image(image_url)
-        with open(image_filepath, "wb") as image_file:
-            copyfileobj(response.raw, image_file)
+        if response is not None:
+            with open(image_filepath, "wb") as image_file:
+                copyfileobj(response.raw, image_file)
         del response
         # Always flip a roll's image on first download if it's known to be
         # improperly mirrored
@@ -402,16 +405,12 @@ def main():
     # Adding DRUIDs here will override user input
     DRUIDS = []
 
-    print(args)
-
     if len(args.druids) > 0:
         DRUIDS = args.druids
     elif args.druids_csv_file is not None:
         DRUIDS = get_druids_from_csv_file(args.druids_csv_file)
     elif args.druids_txt_file is not None:
         DRUIDS = get_druids_from_txt_file(args.druids_txt_file)
-
-    print(DRUIDS)
 
     for druid in DRUIDS:
 
@@ -435,7 +434,9 @@ def main():
             roll_type = get_roll_type(iiif_manifest)
             logging.info(f"Roll type for {druid} is {roll_type}")
 
-        if args.reprocess_images or not Path(f"txt/{druid}.txt").exists():
+        if args.reprocess_images or (
+            not Path(f"txt/{druid}.txt").exists() and roll_image is not None
+        ):
             parse_roll_image(
                 druid,
                 roll_image,
