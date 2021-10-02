@@ -72,6 +72,7 @@ REVERSED_IMAGES = [
 IGNORE_REWIND_HOLE = [
     "mh156nr8259",
     "cd381jt9273",
+    "qw257qp8232",
 ]
 
 # These are either duplicates of existing rolls, or rolls that are listed in
