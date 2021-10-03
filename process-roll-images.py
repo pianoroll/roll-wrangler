@@ -61,6 +61,7 @@ REVERSED_IMAGES = [
     "jw822wm2644",
     "fv104hn7521",
     "fy803vj4057",
+    "kz379jn2491",
 ]
 
 # This overrides the --ignore_rewind_hole command line switch; both are used
