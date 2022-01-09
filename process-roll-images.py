@@ -303,13 +303,15 @@ def apply_midi_expressions(druid, roll_type, midi2exp):
         return
 
     # The -r switch removes the control tracks (3-4, 0-indexed)
-    m2e_switches = "-r -adjust-hole-lengths"
+    m2e_switches = "-r -adjust-hole-lengths"  # add --ac 0 for no acceleration, when available
     if roll_type == "welte-red":
-        m2e_switches += " -w"  # add --ac 0 for no acceleration, when available
+        m2e_switches += " -w"
     elif roll_type == "welte-green":
-        m2e_switches += " -g"  # add --ac 0 for no acceleration, when available
+        m2e_switches += " -g"
     elif roll_type == "welte-licensee":
-        m2e_switches += " -l"  # add --ac 0 for no acceleration, when available
+        m2e_switches += " -l"
+    elif roll_type == "88-note":
+        m2e_switches += " -h"
     cmd = f"{midi2exp} {m2e_switches} midi/note/{druid}_note.mid midi/exp/{druid}_exp.mid"
     logging.info(f"Running expression extraction on midi/note/{druid}_note.mid")
     system(cmd)
