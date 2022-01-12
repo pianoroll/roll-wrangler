@@ -43,6 +43,7 @@ ROLL_TYPES = [
     "65-note",
     "welte-green",
     "welte-licensee",
+    "duo-art",
 ]
 
 # The downloadable full-resolution monochome TIFF images of several rolls were
@@ -122,18 +123,26 @@ def get_tiff_url(iiif_manifest):
 def get_roll_type(iiif_manifest):
     roll_type = "NA"
     for item in iiif_manifest["metadata"]:
-        if item["label"] == "Description" and "88n" in item["value"]:
-            roll_type = "88-note"
-        elif item["label"] == "Description" and "65n" in item["value"]:
-            roll_type = "65-note"
-        elif (
-            item["label"] == "Description"
-            and "Welte-Mignon red roll (T-100)" in item["value"]
-        ):
-            roll_type = "welte-red"
-            # Welte roll metadata can also include "Scale: 88n", so stop as
-            # soon as we see that it's a T-100 roll
+        if item["label"] != "Description":
+            continue
+        # Reproducing roll metadata can also include "Scale: 88n", so stop as
+        # soon as we see a description of a specific roll type
+        if "Duo-Art piano rolls" in item["value"]:
+            roll_type = "duo-art"
             break
+        elif "Welte-Mignon green roll (T-98)" in item["value"]:
+            roll_type = "welte-green"
+            break
+        elif "Welte-Mignon licensee roll" in item["value"]:
+            roll_type = "welte-licensee"
+            break
+        elif "Welte-Mignon red roll (T-100)" in item["value"]:
+            roll_type = "welte-red"
+            break
+        elif "88n" in item["value"]:
+            roll_type = "88-note"
+        elif "65n" in item["value"]:
+            roll_type = "65-note"
     return roll_type
 
 
@@ -238,6 +247,8 @@ def parse_roll_image(
         t2h_switches += "-g"
     elif roll_type == "welte-licensee":
         t2h_switches += "-l"
+    elif roll_type == "duo-art":
+        t2h_switches += "-d"
 
     if ignore_rewind_hole:
         t2h_switches += " -s"
@@ -312,6 +323,8 @@ def apply_midi_expressions(druid, roll_type, midi2exp):
         m2e_switches += " -l"
     elif roll_type == "88-note":
         m2e_switches += " -h"
+    elif roll_type == "duo-art":
+        m2e_switches += " -u"
     cmd = f"{midi2exp} {m2e_switches} midi/note/{druid}_note.mid midi/exp/{druid}_exp.mid"
     logging.info(f"Running expression extraction on midi/note/{druid}_note.mid")
     system(cmd)
