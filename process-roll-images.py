@@ -346,60 +346,60 @@ def main():
     )
     argparser.add_argument(
         "-t",
-        "--roll_type",
+        "--roll-type",
         choices=ROLL_TYPES,
         default="NA",
         help=f"Type of the roll(s) ({' '.join(ROLL_TYPES)})",
     )
     argparser.add_argument(
         "-c",
-        "--druids_csv_file",
+        "--druids-csv-file",
         help="Path to a CSV file listing rolls, with DRUIDs in the 'Druid' column",
     )
     argparser.add_argument(
         "-f",
-        "--druids_txt_file",
+        "--druids-txt-file",
         help="Path to a plain text file listing DRUIDs to be processed, one per line",
     )
     argparser.add_argument(
-        "--multichannel_tiffs",
+        "--multichannel-tiffs",
         action="store_true",
         help="Set if the TIFF images to be processed are RGB, not monochrome",
     )
     argparser.add_argument(
-        "--redownload_manifests",
+        "--redownload-manifests",
         action="store_true",
         help="Always download IIIF manifests, overwriting files in manifests/",
     )
     argparser.add_argument(
-        "--redownload_images",
+        "--redownload-images",
         action="store_true",
         help="Always download roll images, overwriting files in images/",
     )
     argparser.add_argument(
-        "--reprocess_images",
+        "--reprocess-images",
         action="store_true",
         help="Always parse roll images, overwriting output files in txt/",
     )
     argparser.add_argument(
-        "--mirror_images",
+        "--mirror-images",
         action="store_true",
         help="Mirror (flip left/right) all roll images being processed",
     )
     argparser.add_argument(
-        "--ignore_rewind_hole",
+        "--ignore-rewind-hole",
         action="store_true",
         help="Ignore reported rewind hole position when assigning MIDI numbers to holes",
     )
     argparser.add_argument(
-        "--regenerate_midi",
+        "--regenerate-midi",
         action="store_true",
         help="Always generate new _raw.mid and _note.mid MIDI files, overwriting existing versions",
     )
     argparser.add_argument(
-        "--no_expression",
+        "--no-expression",
         action="store_true",
-        help="Do not apply expression emulation to create _exp.mid MIDI files (preexisting files will remain)",
+        help="Do not apply expression emulation to create -exp.mid MIDI files (preexisting files will remain)",
     )
     argparser.add_argument(
         "--tiff2holes",
