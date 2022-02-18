@@ -77,6 +77,10 @@ IGNORE_REWIND_HOLE = [
     "qw257qp8232",
 ]
 
+MANUAL_ALIGNMENT_CORRECTIONS = {
+    "zk199jz1564": -1,
+}
+
 # These are either duplicates of existing rolls, or rolls that are listed in
 # DRUIDs files but have disappeared from the catalog.
 ROLLS_TO_SKIP = ["rr052wh1991", "hm136vg1420"]
@@ -252,6 +256,9 @@ def parse_roll_image(
 
     if ignore_rewind_hole:
         t2h_switches += " -s"
+
+    if druid in MANUAL_ALIGNMENT_CORRECTIONS:
+        t2h_switches += f" --alignment-shift={MANUAL_ALIGNMENT_CORRECTIONS[druid]}"
 
     cmd = f"{tiff2holes} {t2h_switches} {image_filepath} > txt/{druid}.txt 2> logs/{druid}.err"
     logging.info(
