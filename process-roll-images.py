@@ -353,19 +353,19 @@ def main():
     )
     argparser.add_argument(
         "-t",
-        "--roll-type",
+        "--roll_type",
         choices=ROLL_TYPES,
         default="NA",
         help=f"Type of the roll(s) ({' '.join(ROLL_TYPES)})",
     )
     argparser.add_argument(
         "-c",
-        "--druids-csv-file",
+        "--druids_csv_file",
         help="Path to a CSV file listing rolls, with DRUIDs in the 'Druid' column",
     )
     argparser.add_argument(
         "-f",
-        "--druids-txt-file",
+        "--druids_txt_file",
         help="Path to a plain text file listing DRUIDs to be processed, one per line",
     )
     argparser.add_argument(
