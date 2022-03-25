@@ -124,6 +124,8 @@ def get_tiff_url(iiif_manifest):
     return None
 
 
+# XXX As of 2022-03-25, the roll type of 88-note and 65-note rolls is no longer
+# reliably provided in the IIIF manifest.
 def get_roll_type(iiif_manifest):
     roll_type = "NA"
     for item in iiif_manifest["metadata"]:
