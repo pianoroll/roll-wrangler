@@ -55,6 +55,6 @@ The script also downloads a IIIF manifest file for each roll to determine the
 image URL and to obtain other information necessary to parse the roll image,
 such as the roll type; it is stored in `manifests/DRUID.json`. Other output
 files written to sub-folders are `txt/DRUID.txt` (the analysis output of
-`tiff2holes`), `logs/DRUID.err` (stderr output of `tiff2holes`), and
-hex-encoded versions of the raw and note midi files, written to the `binasc/`
-folder.
+`tiff2holes`), `logs/DRUID.err` (stderr output of `tiff2holes`), and ASCII
+representations of the hex-encoded versions of the raw and note midi files,
+written to the `binasc/` folder.
