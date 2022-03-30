@@ -10,8 +10,7 @@ After creating a local copy of the repository
 `git clone https://github.com/pianoroll/roll-wrangler.git`
 
 the easiest way to ensure the scripts can be run is to make sure
-[Pipenv](https://pypi.org/project/pipenv/) is installed on your system (for Mac
-OS, it's best to use [Homebrew](https://formulae.brew.sh/formula/pipenv)). Then
+[Pipenv](https://pypi.org/project/pipenv/) is installed on your system. Then
 run
 
 `pipenv install`
