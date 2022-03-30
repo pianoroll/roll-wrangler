@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 
 """
-This script produces raw, note, and (if desired) expressionized MIDI files 
-(written to subfolders of midi/), as well as a hole analysis output file
-(written to the txt/ folder) for each specified piano roll. Rolls to be
-processed can be specified by DRUID on the command line (separated by spaces)
-or in a plain-text file (one DRUID per line) or a CSV file (DRUIDs in the
-"Druid" column). For each roll, the script downloads the roll's MODS metadata
-file, its IIIF manifest, and the roll image TIFF file from the SDR (if these
-are not already cached in subfolders). Advanced features are also available to
-process locally downloaded TIFF image files if they have not yet been
-accessioned into the SDR.
+Produces raw, note, and (if desired) expressionized MIDI files (written to
+subfolders of midi/), as well as a hole analysis output file (written to the
+txt/ folder) for each specified piano roll. Rolls to be processed can be
+specified by DRUID on the command line (separated by spaces) or in a plain-text
+file (one DRUID per line) or a CSV file (DRUIDs in the "Druid" column). For
+each roll, the script downloads the roll's MODS metadata file, its IIIF
+manifest, and the roll image TIFF file from the SDR (if these are not alread
+cached in subfolders). Advanced features are also available to process locally
+downloaded TIFF image files if they have not yet been accessioned into the
+Stanford Digital Repository.
 The script uses the tiff2holes executable from
 https://github.com/pianoroll/roll-image-parser to perform the image hole-
 parsing analysis, then extracts the binasc-encoded raw and note MIDI data from
@@ -77,6 +77,9 @@ IGNORE_REWIND_HOLE = [
     "qw257qp8232",
 ]
 
+# This can be used in a last-ditch attempt to strongarm a roll's tracker
+# alignment after all of the other methods has been run. Negative values
+# shift the tracker assignments left, positives to the right.
 MANUAL_ALIGNMENT_CORRECTIONS = {
     "zk199jz1564": -1,
 }
@@ -93,6 +96,11 @@ PURL_BASE = "https://purl.stanford.edu/"
 
 
 def get_iiif_manifest(druid, redownload_manifests=True):
+    """If the IIIF manifest file (.json format) is not present in manifests/
+    or the redownload_manifests parameters is set, downloads it from the
+    Stanford Digital Repository. The manifest is then parsed into a
+    dictionary."""
+
     iiif_filepath = Path(f"manifests/{druid}.json")
     if iiif_filepath.exists() and not redownload_manifests:
         iiif_manifest = json.load(open(iiif_filepath, "r"))
@@ -109,10 +117,11 @@ def get_iiif_manifest(druid, redownload_manifests=True):
 
 
 def get_tiff_url(iiif_manifest):
-    if (
-        iiif_manifest is None
-        or "rendering" not in iiif_manifest["sequences"][0]
-    ):
+    """Finds the download URL for the highest-resolution TIFF image of the roll
+    that is listed in the IIIF manifest data (usually this is a monochrome,
+    green-channel only TIFF image."""
+
+    if iiif_manifest is None or "rendering" not in iiif_manifest["sequences"][0]:
         return None
 
     for rendering in iiif_manifest["sequences"][0]["rendering"]:
@@ -124,35 +133,42 @@ def get_tiff_url(iiif_manifest):
     return None
 
 
-# XXX As of 2022-03-25, the roll type of 88-note and 65-note rolls is no longer
-# reliably provided in the IIIF manifest.
 def get_roll_type(iiif_manifest):
+    """Attempts to infer the type of a roll from the metadata provided in its
+    IIIF manifest. Note that as of 2022-03-25, the roll type of 88-note and
+    65-note rolls is no longer reliably provided in the IIIF manifest and must
+    be specified via the roll-type command-line parameter to this script."""
+
     roll_type = "NA"
     for item in iiif_manifest["metadata"]:
         if item["label"] != "Description":
             continue
-        # Reproducing roll metadata can also include "Scale: 88n", so stop as
-        # soon as we see a description of a specific roll type
+        # Reproducing roll metadata can also include "Scale: 88n" as a generic
+        # descriptor of its note range, so stop as soon as we see a description
+        # of a more specific roll type
         if "Duo-Art piano rolls" in item["value"]:
             roll_type = "duo-art"
             break
-        elif "Welte-Mignon green roll (T-98)" in item["value"]:
+        if "Welte-Mignon green roll (T-98)" in item["value"]:
             roll_type = "welte-green"
             break
-        elif "Welte-Mignon licensee roll" in item["value"]:
+        if "Welte-Mignon licensee roll" in item["value"]:
             roll_type = "welte-licensee"
             break
-        elif "Welte-Mignon red roll (T-100)" in item["value"]:
+        if "Welte-Mignon red roll (T-100)" in item["value"]:
             roll_type = "welte-red"
             break
-        elif "88n" in item["value"]:
+        if "88n" in item["value"]:
             roll_type = "88-note"
-        elif "65n" in item["value"]:
+        if "65n" in item["value"]:
             roll_type = "65-note"
     return roll_type
 
 
 def get_druids_from_csv_file(druids_fp):
+    """Returns a list of the DRUIDs in the "Druid" column of the specified CSV
+    file."""
+
     if not Path(druids_fp).exists():
         logging.error(f"Unable to find DRUIDs file {druids_fp}")
         return []
@@ -165,6 +181,9 @@ def get_druids_from_csv_file(druids_fp):
 
 
 def get_druids_from_txt_file(druids_fp):
+    """If the specified text input file contains one DRUID per line, parses it
+    into a list of DRUIDs."""
+
     if not Path(druids_fp).exists():
         logging.error(f"Unable to find DRUIDs file {druids_fp}")
         return []
@@ -176,6 +195,9 @@ def get_druids_from_txt_file(druids_fp):
 
 
 def request_image(image_url):
+    """Attempts to download the file at the URL specified and, if available,
+    returns it as a raw response object."""
+
     if image_url is None:
         logging.error("Image URL is None")
         return None
@@ -184,12 +206,17 @@ def request_image(image_url):
     if response.status_code == 200:
         response.raw.decode_content = True
         return response
-    else:
-        logging.error(f"Unable to download {image_url} - {response}")
-        return None
+
+    logging.error(f"Unable to download {image_url} - {response}")
+    return None
 
 
 def get_roll_image(druid, image_url, redownload_image=False, mirror_roll=False):
+    """Attempts to download an image of the roll specified by DRUID if a URL is
+    provided, otherwise searches for the roll in the local images/ folder.
+    Applies left-right flipping (mirroring) logic if appropriate, and returns
+    a path to the image file."""
+
     image_already_mirrored = False
     # If we couldn't get the image URL from the IIIF manifest, assume it's
     # already stored locally and has a regular filename structure
@@ -217,9 +244,13 @@ def get_roll_image(druid, image_url, redownload_image=False, mirror_roll=False):
 
 
 def flip_image_left_right(image_filepath):
+    """Sometimes a downloaded roll image needs to be flipped left-right
+    (mirrored), for reasons described elsewhere in this documentation.
+    Performs this mirroring in place."""
+
     logging.info(f"Flipping image left-right: {image_filepath}")
-    im = Image.open(image_filepath)
-    out = im.transpose(Image.FLIP_LEFT_RIGHT)
+    img = Image.open(image_filepath)
+    out = img.transpose(Image.FLIP_LEFT_RIGHT)
     out.save(image_filepath)
 
 
@@ -231,6 +262,10 @@ def parse_roll_image(
     tiff2holes,
     is_monochrome,
 ):
+    """Runs the external tiff2holes roll image parsing tool on roll image for
+    the DRUID specified in the parameters, adding the appropriate command-line
+    switches and parameters to the command."""
+
     if not Path(tiff2holes).exists():
         logging.error(f"tiff2holes executable not found at {tiff2holes}")
         return
@@ -263,13 +298,16 @@ def parse_roll_image(
         t2h_switches += f" --alignment-shift={MANUAL_ALIGNMENT_CORRECTIONS[druid]}"
 
     cmd = f"{tiff2holes} {t2h_switches} {image_filepath} > txt/{druid}.txt 2> logs/{druid}.err"
-    logging.info(
-        f"Running image parser on {image_filepath} (roll type {roll_type})"
-    )
+    logging.info(f"Running image parser on {image_filepath} (roll type {roll_type})")
     system(cmd)
 
 
 def convert_binasc_to_midi(binasc_data, druid, midi_type, binasc):
+    """Invokes the external binasc tool to convert the provided ASCII-encoded
+    hexadecimal representation of a MIDI file to binary MIDI format. This
+    involves first writing the input data to a separate .binasc file and then
+    running the binasc tool on it to generate a .mid file."""
+
     if not Path(binasc).exists():
         logging.error(f"binasc executable not found at {binasc}")
         return
@@ -282,6 +320,13 @@ def convert_binasc_to_midi(binasc_data, druid, midi_type, binasc):
 
 
 def extract_midi_from_analysis(druid, regenerate_midi, binasc):
+    """Extracts the ASCII-encoded hexadecmial representations of a roll's raw
+    and note MIDI realization from the .txt output data file produced via
+    the tiff2holes roll image parsing tool (see parse_roll_image()). Via
+    convert_binasc_to_midi(), these realizations are written to local files as
+    DRUID_note.mid and DRUID_raw.mid if they are not already present or the
+    regenerate_midi parameter is true."""
+
     if not Path(f"txt/{druid}.txt").exists():
         logging.error(
             f"Hole analysis report does not exist at txt/{druid}.txt, cannot extract MIDI"
@@ -313,6 +358,10 @@ def extract_midi_from_analysis(druid, regenerate_midi, binasc):
 
 
 def apply_midi_expressions(druid, roll_type, midi2exp):
+    """Invokes the external midi2exp tool to create an expressive version of
+    the note MIDI realization of a roll image, adding the appropriate
+    command-line parameters to the command to run the tool."""
+
     if not Path(midi2exp).exists():
         logging.error(f"midi2exp executable not found at {midi2exp}")
         return
@@ -323,7 +372,9 @@ def apply_midi_expressions(druid, roll_type, midi2exp):
         return
 
     # The -r switch removes the control tracks (3-4, 0-indexed)
-    m2e_switches = "-r -adjust-hole-lengths"  # add --ac 0 for no acceleration, when available
+    m2e_switches = (
+        "-r -adjust-hole-lengths"  # add --ac 0 for no acceleration, when available
+    )
     if roll_type == "welte-red":
         m2e_switches += " -w"
     elif roll_type == "welte-green":
@@ -334,7 +385,9 @@ def apply_midi_expressions(druid, roll_type, midi2exp):
         m2e_switches += " -h"
     elif roll_type == "duo-art":
         m2e_switches += " -u"
-    cmd = f"{midi2exp} {m2e_switches} midi/note/{druid}_note.mid midi/exp/{druid}_exp.mid"
+    cmd = (
+        f"{midi2exp} {m2e_switches} midi/note/{druid}_note.mid midi/exp/{druid}_exp.mid"
+    )
     logging.info(f"Running expression extraction on midi/note/{druid}_note.mid")
     system(cmd)
     return True
@@ -429,16 +482,16 @@ def main():
     args = argparser.parse_args()
 
     # Adding DRUIDs here will override user input
-    DRUIDS = []
+    druids = []
 
     if len(args.druids) > 0:
-        DRUIDS = args.druids
+        druids = args.druids
     elif args.druids_csv_file is not None:
-        DRUIDS = get_druids_from_csv_file(args.druids_csv_file)
+        druids = get_druids_from_csv_file(args.druids_csv_file)
     elif args.druids_txt_file is not None:
-        DRUIDS = get_druids_from_txt_file(args.druids_txt_file)
+        druids = get_druids_from_txt_file(args.druids_txt_file)
 
-    for druid in DRUIDS:
+    for druid in druids:
 
         if druid in ROLLS_TO_SKIP:
             logging.info(f"Skippig DRUID {druid}")
