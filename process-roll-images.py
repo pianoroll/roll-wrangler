@@ -86,7 +86,7 @@ MANUAL_ALIGNMENT_CORRECTIONS = {
 
 # These are either duplicates of existing rolls, or rolls that are listed in
 # DRUIDs files but have disappeared from the catalog.
-ROLLS_TO_SKIP = ["rr052wh1991", "hm136vg1420"]
+ROLLS_TO_SKIP = ["rr052wh1991", "hm136vg1420", "zf037wk3650"]
 
 TIFF2HOLES = "../roll-image-parser/bin/tiff2holes"
 BINASC = "../binasc/binasc"
@@ -110,7 +110,7 @@ def get_iiif_manifest(druid, redownload_manifests=True):
             iiif_manifest = response.json()
             with iiif_filepath.open("w") as _fh:
                 json.dump(iiif_manifest, _fh)
-        except:
+        except Exception as e:
             logging.info(f"Unable to download IIIF manifest for {druid}")
             iiif_manifest = None
     return iiif_manifest
@@ -500,6 +500,7 @@ def main():
         logging.info(f"Downloading and processing {druid}...")
 
         iiif_manifest = get_iiif_manifest(druid, args.redownload_manifests)
+
         roll_image = get_roll_image(
             druid,
             get_tiff_url(iiif_manifest),
