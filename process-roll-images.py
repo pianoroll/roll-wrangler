@@ -86,7 +86,8 @@ MANUAL_ALIGNMENT_CORRECTIONS = {
 
 # These are either duplicates of existing rolls, or rolls that are listed in
 # DRUIDs files but have disappeared from the catalog.
-ROLLS_TO_SKIP = ["rr052wh1991", "hm136vg1420", "zf037wk3650"]
+ROLLS_TO_SKIP = ["rr052wh1991", "zf037wk3650"]
+# "hm136vg1420"
 
 TIFF2HOLES = "../roll-image-parser/bin/tiff2holes"
 BINASC = "../binasc/binasc"
@@ -225,7 +226,7 @@ def get_roll_image(druid, image_url, redownload_image=False, mirror_roll=False):
     else:
         image_fn = re.sub("\.tif$", ".tiff", image_url.split("/")[-1])
         image_filepath = Path(f"images/{image_fn}")
-    if not image_filepath.exists() or redownload_image:
+    if redownload_image:
         response = request_image(image_url)
         if response is not None:
             with open(image_filepath, "wb") as image_file:
