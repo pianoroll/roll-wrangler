@@ -371,6 +371,8 @@ def apply_midi_expressions(druid, roll_type, midi2exp):
             f"Note MIDI file does not exist at midi/note/{druid}_note.mid, cannot apply expressions"
         )
         return
+    if roll_type == "65-note":
+        return
 
     # The -r switch removes the control tracks (3-4, 0-indexed)
     m2e_switches = (
