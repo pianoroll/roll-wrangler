@@ -107,9 +107,9 @@
 @HOLE_OFFSET:		-0.0114808px
 @TRACKER_HOLES:		100
 @HOLE_SOFTWARE:		https://github.com/pianoroll/roll-image-parser
-@SOFTWARE_DATE:		Feb 15 2022 15:13:27
-@ANALYSIS_DATE:		Wed Feb 16 09:21:39 2022
-@ANALYSIS_TIME:		12.4sec
+@SOFTWARE_DATE:		Apr 15 2022 21:01:22
+@ANALYSIS_DATE:		Fri Apr 15 21:14:01 2022
+@ANALYSIS_TIME:		12.63sec
 @COLOR_CHANNEL:		green
 @CHANNEL_MD5:		13993bfe384c6c880cc3126572e87607
 @BRIDGE_FACTOR:		0.85
@@ -169172,7 +169172,7 @@
 
 ;;; TRACK 0 ----------------------------------
 "MTrk"
-4'1239
+4'1240
 v0	ff 51 v3 t60
 v0	ff 1 v19 "@DRUID:	ps866sb0637"
 v0	ff 1 v19 "@ROLL_TYPE:	88-note"
@@ -169211,9 +169211,9 @@ v0	ff 1 v23 "@HOLE_SEPARATION:	33.48"
 v0	ff 1 v24 "@HOLE_OFFSET:	-0.0114808"
 v0	ff 1 v19 "@TRACKER_HOLES:	100"
 v0	ff 1 v62 "@HOLE_SOFTWARE:	https://github.com/pianoroll/roll-image-parser"
-v0	ff 1 v36 "@SOFTWARE_DATE:	Feb 15 2022 15:13:27"
-v0	ff 1 v40 "@ANALYSIS_DATE:	Wed Feb 16 09:21:41 2022"
-v0	ff 1 v23 "@ANALYSIS_TIME:	12.4sec"
+v0	ff 1 v36 "@SOFTWARE_DATE:	Apr 15 2022 21:01:22"
+v0	ff 1 v40 "@ANALYSIS_DATE:	Fri Apr 15 21:14:04 2022"
+v0	ff 1 v24 "@ANALYSIS_TIME:	12.63sec"
 v0	ff 1 v21 "@COLOR_CHANNEL:	green"
 v0	ff 1 v46 "@CHANNEL_MD5:	13993bfe384c6c880cc3126572e87607"
 v0	ff 1 v20 "@BRIDGE_FACTOR:	0.85"
@@ -176561,7 +176561,7 @@ v0	ff 2f v0
 
 ;;; TRACK 0 ----------------------------------
 "MTrk"
-4'1236
+4'1237
 v0	ff 1 v23 "@TICKS_PER_QUARTER:	360"
 v0	ff 1 v19 "@DRUID:	ps866sb0637"
 v0	ff 1 v19 "@ROLL_TYPE:	88-note"
@@ -176600,9 +176600,9 @@ v0	ff 1 v23 "@HOLE_SEPARATION:	33.48"
 v0	ff 1 v24 "@HOLE_OFFSET:	-0.0114808"
 v0	ff 1 v19 "@TRACKER_HOLES:	100"
 v0	ff 1 v62 "@HOLE_SOFTWARE:	https://github.com/pianoroll/roll-image-parser"
-v0	ff 1 v36 "@SOFTWARE_DATE:	Feb 15 2022 15:13:27"
-v0	ff 1 v40 "@ANALYSIS_DATE:	Wed Feb 16 09:21:43 2022"
-v0	ff 1 v23 "@ANALYSIS_TIME:	12.4sec"
+v0	ff 1 v36 "@SOFTWARE_DATE:	Apr 15 2022 21:01:22"
+v0	ff 1 v40 "@ANALYSIS_DATE:	Fri Apr 15 21:14:06 2022"
+v0	ff 1 v24 "@ANALYSIS_TIME:	12.63sec"
 v0	ff 1 v21 "@COLOR_CHANNEL:	green"
 v0	ff 1 v46 "@CHANNEL_MD5:	13993bfe384c6c880cc3126572e87607"
 v0	ff 1 v20 "@BRIDGE_FACTOR:	0.85"
