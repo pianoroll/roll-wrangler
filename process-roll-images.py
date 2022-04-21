@@ -418,12 +418,12 @@ def main():
     )
     argparser.add_argument(
         "-c",
-        "--druids_csv_file",
+        "--druids-csv-file",
         help="Path to a CSV file listing rolls, with DRUIDs in the 'Druid' column",
     )
     argparser.add_argument(
         "-f",
-        "--druids_txt_file",
+        "--druids-txt-file",
         help="Path to a plain text file listing DRUIDs to be processed, one per line",
     )
     argparser.add_argument(
