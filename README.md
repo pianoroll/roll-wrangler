@@ -5,6 +5,8 @@ Repository
 
 ## Installation
 
+NOTE: Wrangling "generation 2" rolls (images scanned in 2024 and later) requires that the [openjpeg](https://www.openjpeg.org/) image codec for handling JPEG2000 images is installed on the local system. Installation packages are availble via [apt](https://packages.ubuntu.com/focal/libopenjp2-7) for Linux and [brew](https://formulae.brew.sh/formula/openjpeg) for Mac OS.
+
 After creating a local copy of the repository
 
 `git clone https://github.com/pianoroll/roll-wrangler.git`
