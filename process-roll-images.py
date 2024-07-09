@@ -6,11 +6,11 @@ subfolders of midi/), as well as a hole analysis output file (written to the
 txt/ folder) for each specified piano roll. Rolls to be processed can be
 specified by DRUID on the command line (separated by spaces) or in a plain-text
 file (one DRUID per line) or a CSV file (DRUIDs in the "Druid" column). For
-each roll, the script downloads the roll's MODS metadata file, its IIIF
-manifest, and the roll image TIFF file from the SDR (if these are not already
-cached in subfolders). Advanced features are also available to process locally
-downloaded TIFF image files if they have not yet been accessioned into the
-Stanford Digital Repository.
+each roll, the script downloads the roll's IIIF manifest (JSON format) and an
+image of the rolls can from the Stanford Digital Repository (if these are not
+already cached in subfolders). Image file formats may vary by generation of the
+scans. Advanced features are also available to process locally downloaded image
+files if they have not yet been accessioned into the Stanford Digital Repository.
 The script uses the tiff2holes executable from
 https://github.com/pianoroll/roll-image-parser to perform the image hole-
 parsing analysis, then extracts the binasc-encoded raw and note MIDI data from
@@ -335,9 +335,6 @@ def parse_roll_image(
 
     if druid in MANUAL_ALIGNMENT_CORRECTIONS:
         t2h_switches += f" --alignment-shift={MANUAL_ALIGNMENT_CORRECTIONS[druid]}"
-    # Gen2 scans of 88-note rolls seem to need to be shifted left by 1 column
-    elif roll_type == "88-note" and gen2scan:
-        t2h_switches += " --alignment-shift=-1"
 
     cmd = f"{tiff2holes} {t2h_switches} {image_filepath} > txt/{druid}.txt 2> logs/{druid}.err"
     logging.info(f"Running image parser on {image_filepath} (roll type {roll_type})")
