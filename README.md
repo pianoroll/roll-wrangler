@@ -17,12 +17,12 @@ run
 
 `pipenv install`
 
-from within the `roll-wrangler`/ folder to set up a Python
+from within the `roll-wrangler/` folder to set up a Python
 environment and install the necessary external Python modules.
 
 ## Example
 
-This is a standard invocation of the `process-roll-images.py` script:
+This is a typical invocation of the `process-roll-images.py` script:
 
 `pipenv run python process-roll-images.py hk155fw7898 --reprocess_images --regenerate_midi --tiff2holes ../roll-image-parser/bin/tiff2holes --binasc ../binasc/binasc --midi2exp ../midi2exp/bin/midi2exp`
 
@@ -39,7 +39,7 @@ running
 
 Note also the command-line arguments specifying where the `tiff2holes`,
 `binasc` and `midi2exp` executables can be found. These programs can be
-compiled from the following Github repositories:
+compiled from the following repositories:
 
 - `tiff2holes`: https://github.com/pianoroll/roll-image-parser
 - `binasc`: https://github.com/craigsapp/binasc
