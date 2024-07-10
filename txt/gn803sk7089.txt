@@ -107,9 +107,9 @@
 @HOLE_OFFSET:		-15.1617px
 @TRACKER_HOLES:		100
 @HOLE_SOFTWARE:		https://github.com/pianoroll/roll-image-parser
-@SOFTWARE_DATE:		Apr 15 2022 21:01:22
-@ANALYSIS_DATE:		Fri Apr 15 21:10:26 2022
-@ANALYSIS_TIME:		3.47sec
+@SOFTWARE_DATE:		Jul  8 2024 23:03:10
+@ANALYSIS_DATE:		Mon Jul  8 23:29:31 2024
+@ANALYSIS_TIME:		4.01sec
 @COLOR_CHANNEL:		green
 @CHANNEL_MD5:		8c8bd7cda55efb97a779712f5723007f
 @BRIDGE_FACTOR:		0.85
@@ -162597,9 +162597,9 @@ v0	ff 1 v22 "@HOLE_SEPARATION:	33.4"
 v0	ff 1 v22 "@HOLE_OFFSET:	-15.1617"
 v0	ff 1 v19 "@TRACKER_HOLES:	100"
 v0	ff 1 v62 "@HOLE_SOFTWARE:	https://github.com/pianoroll/roll-image-parser"
-v0	ff 1 v36 "@SOFTWARE_DATE:	Apr 15 2022 21:01:22"
-v0	ff 1 v40 "@ANALYSIS_DATE:	Fri Apr 15 21:10:27 2022"
-v0	ff 1 v23 "@ANALYSIS_TIME:	3.47sec"
+v0	ff 1 v36 "@SOFTWARE_DATE:	Jul  8 2024 23:03:10"
+v0	ff 1 v40 "@ANALYSIS_DATE:	Mon Jul  8 23:29:33 2024"
+v0	ff 1 v23 "@ANALYSIS_TIME:	4.01sec"
 v0	ff 1 v21 "@COLOR_CHANNEL:	green"
 v0	ff 1 v46 "@CHANNEL_MD5:	8c8bd7cda55efb97a779712f5723007f"
 v0	ff 1 v20 "@BRIDGE_FACTOR:	0.85"
@@ -168556,9 +168556,9 @@ v0	ff 1 v22 "@HOLE_SEPARATION:	33.4"
 v0	ff 1 v22 "@HOLE_OFFSET:	-15.1617"
 v0	ff 1 v19 "@TRACKER_HOLES:	100"
 v0	ff 1 v62 "@HOLE_SOFTWARE:	https://github.com/pianoroll/roll-image-parser"
-v0	ff 1 v36 "@SOFTWARE_DATE:	Apr 15 2022 21:01:22"
-v0	ff 1 v40 "@ANALYSIS_DATE:	Fri Apr 15 21:10:28 2022"
-v0	ff 1 v23 "@ANALYSIS_TIME:	3.47sec"
+v0	ff 1 v36 "@SOFTWARE_DATE:	Jul  8 2024 23:03:10"
+v0	ff 1 v40 "@ANALYSIS_DATE:	Mon Jul  8 23:29:34 2024"
+v0	ff 1 v23 "@ANALYSIS_TIME:	4.01sec"
 v0	ff 1 v21 "@COLOR_CHANNEL:	green"
 v0	ff 1 v46 "@CHANNEL_MD5:	8c8bd7cda55efb97a779712f5723007f"
 v0	ff 1 v20 "@BRIDGE_FACTOR:	0.85"
