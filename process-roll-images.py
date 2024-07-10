@@ -81,9 +81,7 @@ IGNORE_REWIND_HOLE = [
 # This can be used in a last-ditch attempt to strongarm a roll's tracker
 # alignment after all of the other methods has been run. Negative values
 # shift the tracker assignments left, positives to the right.
-MANUAL_ALIGNMENT_CORRECTIONS = {
-    "zk199jz1564": -1,
-}
+MANUAL_ALIGNMENT_CORRECTIONS = {}
 
 # These are either duplicates of existing rolls, or rolls that are listed in
 # DRUIDs files but have disappeared from the catalog, or rolls that were
