@@ -6,11 +6,11 @@ subfolders of midi/), as well as a hole analysis output file (written to the
 txt/ folder) for each specified piano roll. Rolls to be processed can be
 specified by DRUID on the command line (separated by spaces) or in a plain-text
 file (one DRUID per line) or a CSV file (DRUIDs in the "Druid" column). For
-each roll, the script downloads the roll's MODS metadata file, its IIIF
-manifest, and the roll image TIFF file from the SDR (if these are not alread
-cached in subfolders). Advanced features are also available to process locally
-downloaded TIFF image files if they have not yet been accessioned into the
-Stanford Digital Repository.
+each roll, the script downloads the roll's IIIF manifest (JSON format) and an
+image of the rolls can from the Stanford Digital Repository (if these are not
+already cached in subfolders). Image file formats may vary by generation of the
+scans. Advanced features are also available to process locally downloaded image
+files if they have not yet been accessioned into the Stanford Digital Repository.
 The script uses the tiff2holes executable from
 https://github.com/pianoroll/roll-image-parser to perform the image hole-
 parsing analysis, then extracts the binasc-encoded raw and note MIDI data from
@@ -25,11 +25,12 @@ import argparse
 from csv import DictReader
 import json
 import logging
-from os import system
+import os
 from pathlib import Path
 import re
 from shutil import copyfileobj
 
+from openjpeg import decode  # Necessary to read JPEG2000s
 from PIL import Image
 import requests
 
@@ -80,9 +81,7 @@ IGNORE_REWIND_HOLE = [
 # This can be used in a last-ditch attempt to strongarm a roll's tracker
 # alignment after all of the other methods has been run. Negative values
 # shift the tracker assignments left, positives to the right.
-MANUAL_ALIGNMENT_CORRECTIONS = {
-    "zk199jz1564": -1,
-}
+MANUAL_ALIGNMENT_CORRECTIONS = {}
 
 # These are either duplicates of existing rolls, or rolls that are listed in
 # DRUIDs files but have disappeared from the catalog, or rolls that were
@@ -117,16 +116,43 @@ def get_iiif_manifest(druid, redownload_manifests=True):
     return iiif_manifest
 
 
-def get_tiff_url(iiif_manifest):
+def get_image_url(iiif_manifest):
     """Finds the download URL for the highest-resolution TIFF image of the roll
     that is listed in the IIIF manifest data (usually this is a monochrome,
     green-channel only TIFF image."""
 
-    if iiif_manifest is None or "rendering" not in iiif_manifest["sequences"][0]:
+    if iiif_manifest is None or "sequences" not in iiif_manifest:
+        logging.error("Couldn't find sequences in IIIF manifest")
         return None
 
-    for rendering in iiif_manifest["sequences"][0]["rendering"]:
+    renderings = []
+
+    # Handle both new and old IIIF manifest formats for renderings/canvases
+    if "rendering" not in iiif_manifest["sequences"][0]:
+        if "canvases" not in iiif_manifest["sequences"][0]:
+            logging.error("Couldn't find renderings or canvases in IIIF manifest")
+            return None
+        renderings = [
+            canvas["rendering"][0]
+            for canvas in iiif_manifest["sequences"][0]["canvases"]
+        ]
+    else:
+        renderings = iiif_manifest["sequences"][0]["rendering"]
+
+    # If there's only one rendering (probably the original RGB), return it
+    if len(renderings) == 1:
+        return renderings[0]["@id"]
+
+    for rendering in renderings:
         if (
+            rendering["@id"].endswith("_ir_sp.jp2")
+            and rendering["format"] == "image/jp2"
+        ):
+            return rendering["@id"]
+        if (
+            rendering["@id"].endswith("_gr.tiff")
+            or rendering["@id"].endswith("_gr.tif")
+        ) and (
             rendering["format"] == "image/tiff"
             or rendering["format"] == "image/x-tiff-big"
         ):
@@ -219,19 +245,43 @@ def get_roll_image(druid, image_url, redownload_image=False, mirror_roll=False):
     a path to the image file."""
 
     image_already_mirrored = False
-    # If we couldn't get the image URL from the IIIF manifest, assume it's
-    # already stored locally and has a regular filename structure
-    if image_url is None:
-        image_filepath = Path(f"images/{druid}_0001.tiff")
+
+    target_pathname = Path(f"images/{image_url.split('/')[-1]}")
+    image_filepath = Path(f"images/{druid}.tiff")
+
+    # If the source image is a JP2, prepare to convert it to a TIFF
+    if image_url.endswith(".jp2"):
+        source_filepath = Path(f"images/{druid}.jp2")
     else:
-        image_fn = re.sub("\.tif$", ".tiff", image_url.split("/")[-1])
-        image_filepath = Path(f"images/{image_fn}")
-    if redownload_image:
+        source_filepath = target_pathname
+
+    # If the source image is a TIFF and it's stored locally, stop here
+    if not redownload_image:
+        if os.path.isfile(target_pathname):
+            return target_pathname
+        # Files in the SDR often use the extension .tif rather than .tiff :-(
+        # But they may have been renamed locally to use the correct extension
+        elif os.path.isfile(target_pathname.with_suffix(".tiff")):
+            return target_pathname.with_suffix(".tiff")
+
+    # Otherwise, download the image and convert it to a TIFF if necessary
+    if not os.path.isfile(image_filepath) or redownload_image:
         response = request_image(image_url)
         if response is not None:
-            with open(image_filepath, "wb") as image_file:
+            with open(source_filepath, "wb") as image_file:
                 copyfileobj(response.raw, image_file)
         del response
+        # High-contrast infrared versions of Gen2 scans are JP2s, must be
+        # converted in place into TIFFs and flipped vertically for parsing
+        if image_url.endswith(".jp2") and source_filepath != image_filepath:
+            logging.info(f"Converting JPEG2000 to TIFF: {source_filepath}")
+            image_array = decode(source_filepath)
+            img = Image.fromarray(image_array)
+            logging.info(f"Flipping image top-bttom: {image_filepath}")
+            img = img.transpose(Image.FLIP_TOP_BOTTOM)
+            img.save(image_filepath)
+            # img = Image.open(image_filepath)
+            # out.save(image_filepath)
         # Always flip a roll's image on first download if it's known to be
         # improperly mirrored
         if druid in REVERSED_IMAGES:
@@ -262,6 +312,7 @@ def parse_roll_image(
     ignore_rewind_hole,
     tiff2holes,
     is_monochrome,
+    gen2scan,
 ):
     """Runs the external tiff2holes roll image parsing tool on roll image for
     the DRUID specified in the parameters, adding the appropriate command-line
@@ -276,7 +327,8 @@ def parse_roll_image(
 
     t2h_switches = ""
 
-    if is_monochrome:
+    # Gen2 scans _should_ all be multi-channel
+    if is_monochrome and not gen2scan:
         t2h_switches = "-m "
 
     if roll_type == "welte-red":
@@ -300,7 +352,7 @@ def parse_roll_image(
 
     cmd = f"{tiff2holes} {t2h_switches} {image_filepath} > txt/{druid}.txt 2> logs/{druid}.err"
     logging.info(f"Running image parser on {image_filepath} (roll type {roll_type})")
-    system(cmd)
+    os.system(cmd)
 
 
 def convert_binasc_to_midi(binasc_data, druid, midi_type, binasc):
@@ -317,7 +369,7 @@ def convert_binasc_to_midi(binasc_data, druid, midi_type, binasc):
         binasc_file.write(binasc_data)
     if Path(binasc).exists():
         cmd = f"{binasc} {binasc_file_path} -c midi/{midi_type}/{druid}_{midi_type}.mid"
-        system(cmd)
+        os.system(cmd)
 
 
 def extract_midi_from_analysis(druid, regenerate_midi, binasc):
@@ -392,7 +444,7 @@ def apply_midi_expressions(druid, roll_type, midi2exp):
         f"{midi2exp} {m2e_switches} midi/note/{druid}_note.mid midi/exp/{druid}_exp.mid"
     )
     logging.info(f"Running expression extraction on midi/note/{druid}_note.mid")
-    system(cmd)
+    os.system(cmd)
     return True
 
 
@@ -481,6 +533,11 @@ def main():
         default=MIDI2EXP,
         help="Location of a compiled midi2exp binary",
     )
+    argparser.add_argument(
+        "--gen2scan",
+        action="store_true",
+        help="Scan is from the updated camera (2024-)",
+    )
 
     args = argparser.parse_args()
 
@@ -495,7 +552,6 @@ def main():
         druids = get_druids_from_txt_file(args.druids_txt_file)
 
     for druid in druids:
-
         if druid in ROLLS_TO_SKIP:
             logging.info(f"Skippig DRUID {druid}")
             continue
@@ -506,7 +562,7 @@ def main():
 
         roll_image = get_roll_image(
             druid,
-            get_tiff_url(iiif_manifest),
+            get_image_url(iiif_manifest),
             args.redownload_images,
             args.mirror_images,
         )
@@ -527,6 +583,7 @@ def main():
                 args.ignore_rewind_hole or (druid in IGNORE_REWIND_HOLE),
                 args.tiff2holes,
                 not args.multichannel_tiffs,
+                args.gen2scan,
             )
 
         extract_midi_from_analysis(druid, args.regenerate_midi, args.binasc)
