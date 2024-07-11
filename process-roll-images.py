@@ -116,12 +116,12 @@ def get_iiif_manifest(druid, redownload_manifests=True):
     return iiif_manifest
 
 
-def get_image_url(iiif_manifest, gen2scan):
+def get_image_url(iiif_manifest):
     """Finds the download URL for the highest-resolution TIFF image of the roll
     that is listed in the IIIF manifest data (usually this is a monochrome,
     green-channel only TIFF image."""
 
-    if iiif_manifest is None or not "sequences" in iiif_manifest:
+    if iiif_manifest is None or "sequences" not in iiif_manifest:
         logging.error("Couldn't find sequences in IIIF manifest")
         return None
 
@@ -139,19 +139,24 @@ def get_image_url(iiif_manifest, gen2scan):
     else:
         renderings = iiif_manifest["sequences"][0]["rendering"]
 
+    # If there's only one rendering (probably the original RGB), return it
+    if len(renderings) == 1:
+        return renderings[0]["@id"]
+
     for rendering in renderings:
-        if gen2scan:
-            if (
-                rendering["@id"].endswith("_ir_sp.jp2")
-                and rendering["format"] == "image/jp2"
-            ):
-                return rendering["@id"]
-        else:
-            if (
-                rendering["format"] == "image/tiff"
-                or rendering["format"] == "image/x-tiff-big"
-            ):
-                return rendering["@id"]
+        if (
+            rendering["@id"].endswith("_ir_sp.jp2")
+            and rendering["format"] == "image/jp2"
+        ):
+            return rendering["@id"]
+        if (
+            rendering["@id"].endswith("_gr.tiff")
+            or rendering["@id"].endswith("_gr.tif")
+        ) and (
+            rendering["format"] == "image/tiff"
+            or rendering["format"] == "image/x-tiff-big"
+        ):
+            return rendering["@id"]
     return None
 
 
@@ -239,16 +244,27 @@ def get_roll_image(druid, image_url, redownload_image=False, mirror_roll=False):
     Applies left-right flipping (mirroring) logic if appropriate, and returns
     a path to the image file."""
 
-    print(image_url)
-
     image_already_mirrored = False
-    # If we couldn't get the image URL from the IIIF manifest, assume it's
-    # already stored locally and has a regular filename structure
+
+    target_pathname = Path(f"images/{image_url.split('/')[-1]}")
     image_filepath = Path(f"images/{druid}.tiff")
+
+    # If the source image is a JP2, prepare to convert it to a TIFF
     if image_url.endswith(".jp2"):
         source_filepath = Path(f"images/{druid}.jp2")
     else:
-        source_filepath = image_filepath
+        source_filepath = target_pathname
+
+    # If the source image is a TIFF and it's stored locally, stop here
+    if not redownload_image:
+        if os.path.isfile(target_pathname):
+            return target_pathname
+        # Files in the SDR often use the extension .tif rather than .tiff :-(
+        # But they may have been renamed locally to use the correct extension
+        elif os.path.isfile(target_pathname.with_suffix(".tiff")):
+            return target_pathname.with_suffix(".tiff")
+
+    # Otherwise, download the image and convert it to a TIFF if necessary
     if not os.path.isfile(image_filepath) or redownload_image:
         response = request_image(image_url)
         if response is not None:
@@ -336,7 +352,6 @@ def parse_roll_image(
 
     cmd = f"{tiff2holes} {t2h_switches} {image_filepath} > txt/{druid}.txt 2> logs/{druid}.err"
     logging.info(f"Running image parser on {image_filepath} (roll type {roll_type})")
-    print(cmd)
     os.system(cmd)
 
 
@@ -547,7 +562,7 @@ def main():
 
         roll_image = get_roll_image(
             druid,
-            get_image_url(iiif_manifest, args.gen2scan),
+            get_image_url(iiif_manifest),
             args.redownload_images,
             args.mirror_images,
         )
