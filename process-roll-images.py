@@ -256,16 +256,18 @@ def get_roll_image(druid, image_url, redownload_image=False, mirror_roll=False):
         source_filepath = target_pathname
 
     # If the source image is a TIFF and it's stored locally, stop here
-    if not redownload_image:
-        if os.path.isfile(target_pathname):
-            return target_pathname
-        # Files in the SDR often use the extension .tif rather than .tiff :-(
-        # But they may have been renamed locally to use the correct extension
-        elif os.path.isfile(target_pathname.with_suffix(".tiff")):
-            return target_pathname.with_suffix(".tiff")
+    if (
+        not redownload_image
+        and os.path.isfile(target_pathname)
+        and target_pathname.suffix in (".tiff", ".tif")
+    ):
+        return target_pathname
 
     # Otherwise, download the image and convert it to a TIFF if necessary
     if not os.path.isfile(image_filepath) or redownload_image:
+        if target_pathname.suffix in (".tiff", ".tif"):
+            source_filepath = target_pathname
+            image_filepath = target_pathname
         response = request_image(image_url)
         if response is not None:
             with open(source_filepath, "wb") as image_file:
@@ -273,15 +275,13 @@ def get_roll_image(druid, image_url, redownload_image=False, mirror_roll=False):
         del response
         # High-contrast infrared versions of Gen2 scans are JP2s, must be
         # converted in place into TIFFs and flipped vertically for parsing
-        if image_url.endswith(".jp2") and source_filepath != image_filepath:
+        if image_url.endswith(".jp2"):
             logging.info(f"Converting JPEG2000 to TIFF: {source_filepath}")
             image_array = decode(source_filepath)
             img = Image.fromarray(image_array)
             logging.info(f"Flipping image top-bttom: {image_filepath}")
             img = img.transpose(Image.FLIP_TOP_BOTTOM)
             img.save(image_filepath)
-            # img = Image.open(image_filepath)
-            # out.save(image_filepath)
         # Always flip a roll's image on first download if it's known to be
         # improperly mirrored
         if druid in REVERSED_IMAGES:
