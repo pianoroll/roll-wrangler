@@ -238,8 +238,8 @@ def get_image_url(iiif_manifest):
     for rendering in renderings:
         if (
             rendering["@id"].endswith("_ir_sp.jp2")
-            and rendering["format"] == "image/jp2"
-        ):
+            or rendering["@id"].endswith("_gs.jp2")
+        ) and rendering["format"] == "image/jp2":
             return rendering["@id"]
         if (
             rendering["@id"].endswith("_gr.tiff")
