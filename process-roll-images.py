@@ -30,6 +30,7 @@ from pathlib import Path
 import re
 from shutil import copyfileobj
 
+from lxml import etree
 from openjpeg import decode  # Necessary to read JPEG2000s
 from PIL import Image
 import requests
@@ -46,6 +47,26 @@ ROLL_TYPES = [
     "welte-licensee",
     "duo-art",
 ]
+
+ROLL_TYPE_ENTRIES = {
+    "Welte-Mignon red roll (T-100)": "welte-red",
+    "Welte-Mignon red roll (T-100).": "welte-red",
+    "Welte-Mignon red roll (T-100)..": "welte-red",
+    "Scale: 88n": "88-note",
+    "Scale: 88n.": "88-note",
+    "Scale: 65n.": "65-note",
+    "88n": "88-note",
+    "65n": "65-note",
+    "standard": "88-note",
+    "non-reproducing": "88-note",
+    "Welte-Mignon green roll (T-98)": "welte-green",
+    "Welte-Mignon green roll (T-98).": "welte-green",
+    "Welte-Mignon licensee roll": "welte-licensee",
+    "Welte-Mignon licensee roll.": "welte-licensee",
+    "Welte-Mignon licensee roll (T-98).": "welte-licensee",
+    "Duo-Art piano rolls": "duo-art",
+    "Duo-Art piano rolls.": "duo-art",
+}
 
 # The downloadable full-resolution monochome TIFF images of several rolls were
 # erroneously mirrored left-right (so that the bass perforations are on the
@@ -93,6 +114,77 @@ BINASC = "../binasc/binasc"
 MIDI2EXP = "../midi2exp/bin/midi2exp"
 
 PURL_BASE = "https://purl.stanford.edu/"
+
+NS = {"x": "http://www.loc.gov/mods/v3"}
+
+
+def get_roll_type_for_druid(druid, redownload_xml):
+    """Obtains a .xml metadata file for the roll specified by DRUID either
+    from the local xml/ folder or the Stanford Digital Repository, then
+    parses the XML to build the metadata dictionary for the roll.
+    """
+
+    def get_value_by_xpath(xpath):
+        try:
+            return xml_tree.xpath(
+                xpath,
+                namespaces=NS,
+            )[0]
+        except IndexError:
+            return None
+
+    xml_filepath = Path(f"xml/{druid}.xml")
+
+    if not xml_filepath.exists() or redownload_xml:
+        response = requests.get(f"{PURL_BASE}{druid}.xml")
+        xml_data = response.text
+        with xml_filepath.open("w", encoding="utf-8") as _fh:
+            _fh.write(xml_data)
+    else:
+        xml_data = xml_filepath.open("r", encoding="utf-8").read()
+
+    try:
+        mods_xml = (
+            "<mods" + xml_data.split(r"<mods")[1].split(r"</mods>")[0] + "</mods>"
+        )
+        xml_tree = etree.fromstring(mods_xml)
+    except etree.XMLSyntaxError:
+        logging.error(
+            f"Unable to parse XML metadata for {druid} - record is likely missing."
+        )
+        return None
+
+    # The representation of the roll type in the MODS metadata continues to
+    # evolve. Hopefully this logic covers all cases.
+    roll_type = "NA"
+    type_note = get_value_by_xpath(
+        "x:physicalDescription/x:note[@displayLabel='Roll type']/text()"
+    )
+    scale_note = get_value_by_xpath(
+        "x:physicalDescription/x:note[@displayLabel='Scale']/text()"
+    )
+    if type_note is not None and type_note in ROLL_TYPE_ENTRIES:
+        roll_type = ROLL_TYPE_ENTRIES[type_note]
+
+    if (
+        scale_note is not None
+        and scale_note in ROLL_TYPE_ENTRIES
+        and (roll_type == "NA" or type_note == "standard")
+    ):
+        roll_type = ROLL_TYPE_ENTRIES[scale_note]
+
+    if roll_type == "NA" or type_note == "standard":
+        for note in xml_tree.xpath("(x:note)", namespaces=NS):
+            if (
+                note is not None
+                and note.text in ROLL_TYPE_ENTRIES
+                # Most rolls of any type are marked as "88n", so don't let this
+                # setting overwrite a more specific roll type note.
+                and (ROLL_TYPE_ENTRIES[note.text] != "88-note" or roll_type == "NA")
+            ):
+                roll_type = ROLL_TYPE_ENTRIES[note.text]
+
+    return roll_type
 
 
 def get_iiif_manifest(druid, redownload_manifests=True):
@@ -158,38 +250,6 @@ def get_image_url(iiif_manifest):
         ):
             return rendering["@id"]
     return None
-
-
-def get_roll_type(iiif_manifest):
-    """Attempts to infer the type of a roll from the metadata provided in its
-    IIIF manifest. Note that as of 2022-03-25, the roll type of 88-note and
-    65-note rolls is no longer reliably provided in the IIIF manifest and must
-    be specified via the roll-type command-line parameter to this script."""
-
-    roll_type = "NA"
-    for item in iiif_manifest["metadata"]:
-        if item["label"] != "Description":
-            continue
-        # Reproducing roll metadata can also include "Scale: 88n" as a generic
-        # descriptor of its note range, so stop as soon as we see a description
-        # of a more specific roll type
-        if "Duo-Art piano rolls" in item["value"]:
-            roll_type = "duo-art"
-            break
-        if "Welte-Mignon green roll (T-98)" in item["value"]:
-            roll_type = "welte-green"
-            break
-        if "Welte-Mignon licensee roll" in item["value"]:
-            roll_type = "welte-licensee"
-            break
-        if "Welte-Mignon red roll (T-100)" in item["value"]:
-            roll_type = "welte-red"
-            break
-        if "88n" in item["value"]:
-            roll_type = "88-note"
-        if "65n" in item["value"]:
-            roll_type = "65-note"
-    return roll_type
 
 
 def get_druids_from_csv_file(druids_fp):
@@ -489,6 +549,11 @@ def main():
         help="Always download IIIF manifests, overwriting files in manifests/",
     )
     argparser.add_argument(
+        "--redownload-metadata",
+        action="store_true",
+        help="Always download XML metadata files, overwriting files in xml/",
+    )
+    argparser.add_argument(
         "--redownload-images",
         action="store_true",
         help="Always download roll images, overwriting files in images/",
@@ -560,18 +625,18 @@ def main():
 
         iiif_manifest = get_iiif_manifest(druid, args.redownload_manifests)
 
+        if args.roll_type != "NA":
+            roll_type = args.roll_type
+        else:
+            roll_type = get_roll_type_for_druid(druid, args.redownload_metadata)
+            logging.info(f"Roll type for {druid} is {roll_type}")
+
         roll_image = get_roll_image(
             druid,
             get_image_url(iiif_manifest),
             args.redownload_images,
             args.mirror_images,
         )
-
-        if args.roll_type != "NA":
-            roll_type = args.roll_type
-        else:
-            roll_type = get_roll_type(iiif_manifest)
-            logging.info(f"Roll type for {druid} is {roll_type}")
 
         if args.reprocess_images or (
             not Path(f"txt/{druid}.txt").exists() and roll_image is not None
