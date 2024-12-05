@@ -107,7 +107,7 @@ MANUAL_ALIGNMENT_CORRECTIONS = {}
 # These are either duplicates of existing rolls, or rolls that are listed in
 # DRUIDs files but have disappeared from the catalog, or rolls that were
 # accessioned incorrectly (hm136vg1420)
-ROLLS_TO_SKIP = ["rr052wh1991", "zf037wk3650", "hm136vg1420"]
+ROLLS_TO_SKIP = ["rr052wh1991", "zf037wk3650", "hm136vg1420", "df354sy6634"]
 
 TIFF2HOLES = "../roll-image-parser/bin/tiff2holes"
 BINASC = "../binasc/binasc"
@@ -213,42 +213,52 @@ def get_image_url(iiif_manifest):
     that is listed in the IIIF manifest data (usually this is a monochrome,
     green-channel only TIFF image."""
 
-    if iiif_manifest is None or "sequences" not in iiif_manifest:
+    if iiif_manifest is None or (
+        "sequences" not in iiif_manifest and "items" not in iiif_manifest
+    ):
         logging.error("Couldn't find sequences in IIIF manifest")
         return None
 
     renderings = []
-
-    # Handle both new and old IIIF manifest formats for renderings/canvases
-    if "rendering" not in iiif_manifest["sequences"][0]:
-        if "canvases" not in iiif_manifest["sequences"][0]:
-            logging.error("Couldn't find renderings or canvases in IIIF manifest")
-            return None
-        renderings = [
-            canvas["rendering"][0]
-            for canvas in iiif_manifest["sequences"][0]["canvases"]
-        ]
+    if "sequences" in iiif_manifest:
+        seqs = iiif_manifest["sequences"]
     else:
-        renderings = iiif_manifest["sequences"][0]["rendering"]
+        seqs = iiif_manifest["items"]
 
-    # If there's only one rendering (probably the original RGB), return it
-    if len(renderings) == 1:
-        return renderings[0]["@id"]
+    # Handle a variety of potential IIIF manifest formats for sequences/renderings/canvases
+    for seq in seqs:
+        if "renderings" in seq:
+            renderings = seq["renderings"]
+        elif "rendering" not in seq:
+            if "canvases" not in seq:
+                continue
+            renderings = [canvas["rendering"][0] for canvas in seq["canvases"]]
+        else:
+            renderings = seq["rendering"]
 
-    for rendering in renderings:
-        if (
-            rendering["@id"].endswith("_ir_sp.jp2")
-            or rendering["@id"].endswith("_gs.jp2")
-        ) and rendering["format"] == "image/jp2":
-            return rendering["@id"]
-        if (
-            rendering["@id"].endswith("_gr.tiff")
-            or rendering["@id"].endswith("_gr.tif")
-        ) and (
-            rendering["format"] == "image/tiff"
-            or rendering["format"] == "image/x-tiff-big"
-        ):
-            return rendering["@id"]
+        # If there's only one rendering (probably the original RGB), return it
+        if len(renderings) == 1:
+            if "id" in renderings[0]:
+                return renderings[0]["id"]
+            elif "@id" in renderings[0]:
+                return renderings[0]["@id"]
+
+        for rendering in renderings:
+            if (
+                rendering["@id"].endswith("_ir_sp.jp2")
+                or rendering["@id"].endswith("_gs.jp2")
+            ) and rendering["format"] == "image/jp2":
+                return rendering["@id"]
+            if (
+                rendering["@id"].endswith("_gr.tiff")
+                or rendering["@id"].endswith("_gr.tif")
+            ) and (
+                rendering["format"] == "image/tiff"
+                or rendering["format"] == "image/x-tiff-big"
+            ):
+                return rendering["@id"]
+
+    logging.error("Unable to find image URL in IIIF manifest")
     return None
 
 
@@ -298,7 +308,14 @@ def request_image(image_url):
     return None
 
 
-def get_roll_image(druid, image_url, redownload_image=False, mirror_roll=False):
+def get_roll_image(
+    druid,
+    image_url,
+    roll_type,
+    redownload_image=False,
+    mirror_roll=False,
+    gen2scan=False,
+):
     """Attempts to download an image of the roll specified by DRUID if a URL is
     provided, otherwise searches for the roll in the local images/ folder.
     Applies left-right flipping (mirroring) logic if appropriate, and returns
@@ -328,19 +345,25 @@ def get_roll_image(druid, image_url, redownload_image=False, mirror_roll=False):
         if target_pathname.suffix in (".tiff", ".tif"):
             source_filepath = target_pathname
             image_filepath = target_pathname
-        response = request_image(image_url)
-        if response is not None:
-            with open(source_filepath, "wb") as image_file:
-                copyfileobj(response.raw, image_file)
-        del response
+
+        if image_url.endswith(".jp2") and os.path.isfile(source_filepath):
+            logging.info("JPEG2000 already downloaded")
+        else:
+            response = request_image(image_url)
+            if response is not None:
+                with open(source_filepath, "wb") as image_file:
+                    copyfileobj(response.raw, image_file)
+            del response
         # High-contrast infrared versions of Gen2 scans are JP2s, must be
         # converted in place into TIFFs and flipped vertically for parsing
         if image_url.endswith(".jp2"):
             logging.info(f"Converting JPEG2000 to TIFF: {source_filepath}")
             image_array = decode(source_filepath)
             img = Image.fromarray(image_array)
-            logging.info(f"Flipping image top-bttom: {image_filepath}")
-            img = img.transpose(Image.FLIP_TOP_BOTTOM)
+            # XXX Need to check all contingencies...
+            if gen2scan or roll_type != "welte-red":
+                logging.info(f"Flipping image top-bttom: {image_filepath}")
+                img = img.transpose(Image.FLIP_TOP_BOTTOM)
             img.save(image_filepath)
         # Always flip a roll's image on first download if it's known to be
         # improperly mirrored
@@ -634,8 +657,10 @@ def main():
         roll_image = get_roll_image(
             druid,
             get_image_url(iiif_manifest),
+            roll_type,
             args.redownload_images,
             args.mirror_images,
+            args.gen2scan,
         )
 
         if args.reprocess_images or (
