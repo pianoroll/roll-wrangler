@@ -93,11 +93,7 @@ REVERSED_IMAGES = [
 # can be detected incorrectly due to test patterns at the end of the roll,
 # conjoined rolls, or spurious holes, and sometimes it's better to ignore it
 # and hope the other alignment methods will assign the MIDI numbers correctly.
-IGNORE_REWIND_HOLE = [
-    "mh156nr8259",
-    "cd381jt9273",
-    "qw257qp8232",
-]
+IGNORE_REWIND_HOLE = ["mh156nr8259", "cd381jt9273", "qw257qp8232", "tg593zw7367"]
 
 # This can be used in a last-ditch attempt to strongarm a roll's tracker
 # alignment after all of the other methods has been run. Negative values
