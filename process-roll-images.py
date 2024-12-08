@@ -107,7 +107,14 @@ MANUAL_ALIGNMENT_CORRECTIONS = {}
 # These are either duplicates of existing rolls, or rolls that are listed in
 # DRUIDs files but have disappeared from the catalog, or rolls that were
 # accessioned incorrectly (hm136vg1420)
-ROLLS_TO_SKIP = ["rr052wh1991", "zf037wk3650", "hm136vg1420", "df354sy6634"]
+ROLLS_TO_SKIP = [
+    "rr052wh1991",
+    "zf037wk3650",
+    "hm136vg1420",
+    "df354sy6634",  # Needs to be flipped vertically
+    "sm367hr9769",  # Image downloads but won't process automatically
+    "xc735nd8093",  # Needs to be flipped vertically, reaccessioned
+]
 
 TIFF2HOLES = "../roll-image-parser/bin/tiff2holes"
 BINASC = "../binasc/binasc"
