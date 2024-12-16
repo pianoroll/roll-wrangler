@@ -100,6 +100,20 @@ IGNORE_REWIND_HOLE = [
     "tg593zw7367",
     "cf814vt1322",
     "ct641rb1417",
+    "cm852bp8620",
+    "cs175wr2428",
+    "ft113cg5195",
+    "pk349zj4179",
+    "pf050rx0162",
+    "rd899zb5188",
+    "ty382mw3181",
+    "hj286gj0705",
+    "sh954gz9635",
+    "wb477ky1555",
+    "tj759sv4290",
+    "xk327pf9243",
+    "pz737tz3677",
+    "yj176wj3359",
 ]
 
 # This can be used in a last-ditch attempt to strongarm a roll's tracker
@@ -110,13 +124,19 @@ MANUAL_ALIGNMENT_CORRECTIONS = {}
 # These are either duplicates of existing rolls, or rolls that are listed in
 # DRUIDs files but have disappeared from the catalog, or rolls that were
 # accessioned incorrectly (hm136vg1420)
+# Note: All Duo-Art rolls are currently unusable because their primary images
+# are upside-down on the server.
 ROLLS_TO_SKIP = [
-    "rr052wh1991",
-    "zf037wk3650",
-    "hm136vg1420",
+    "rr052wh1991",  # Duplicate of gn803sk7089
+    "hm136vg1420",  # Incorrectly mirrored, but replaced by rg676ym0376 - should be de-accessioned
     "df354sy6634",  # Needs to be flipped vertically
-    "sm367hr9769",  # Image downloads but won't process automatically
-    "xc735nd8093",  # Needs to be flipped vertically, reaccessioned
+    "xc735nd8093",  # Needs to be flipped vertically
+    "sh954gz9635",  # Large section of white paper from repair makes it unparsable
+    "wb477ky1555",  # Green W incorrectly cataloged as Red
+    "pz737tz3677",  # Licensee incorrectly cataloged as Green
+    "yj176wj3359",  # Licensee incorrectly cataloged as Green
+    "sm367hr9769",  # Image(s) seem to be corrupted
+    "sj617nc3041",  # All images erroneously mirrored left-right
 ]
 
 TIFF2HOLES = "../roll-image-parser/bin/tiff2holes"
@@ -129,7 +149,7 @@ NS = {"x": "http://www.loc.gov/mods/v3"}
 
 
 def get_roll_type_for_druid(druid, redownload_xml):
-    """Obtains a .xml metadata file for the roll specified by DRUID either
+    """Obtains a .xml metadata file for the roll specified by DRUID     either
     from the local xml/ folder or the Stanford Digital Repository, then
     parses the XML to build the metadata dictionary for the roll.
     """
