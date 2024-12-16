@@ -114,6 +114,7 @@ IGNORE_REWIND_HOLE = [
     "xk327pf9243",
     "pz737tz3677",
     "yj176wj3359",
+    "pp228yz4317",  # New
 ]
 
 # This can be used in a last-ditch attempt to strongarm a roll's tracker
