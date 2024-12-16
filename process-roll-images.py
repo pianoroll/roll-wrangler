@@ -122,13 +122,6 @@ IGNORE_REWIND_HOLE = [
 # shift the tracker assignments left, positives to the right.
 MANUAL_ALIGNMENT_CORRECTIONS = {}
 
-# The hole parser can be instructed not to try to calculate the optimal
-# inter-hole continuation distance threshold, and just use the default
-# for the roll type. Occasionally this works better. Note that 88-note
-# and 65-note rolls always use the default, whether this is specified
-# or not.
-USE_DEFAULT_BRIDGE_FACTOR = ["hp956bx4547"]
-
 # These are either duplicates of existing rolls, or rolls that are listed in
 # DRUIDs files but have disappeared from the catalog, or rolls that were
 # accessioned incorrectly (hm136vg1420)
@@ -470,9 +463,6 @@ def parse_roll_image(
 
     if druid in MANUAL_ALIGNMENT_CORRECTIONS:
         t2h_switches += f" --alignment-shift={MANUAL_ALIGNMENT_CORRECTIONS[druid]}"
-
-    if druid in USE_DEFAULT_BRIDGE_FACTOR:
-        t2h_switches += " -f"
 
     cmd = f"{tiff2holes} {t2h_switches} {image_filepath} > txt/{druid}.txt 2> logs/{druid}.err"
     logging.info(f"Running image parser on {image_filepath} (roll type {roll_type})")
