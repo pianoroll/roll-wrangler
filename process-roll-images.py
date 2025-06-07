@@ -7,7 +7,7 @@ txt/ folder) for each specified piano roll. Rolls to be processed can be
 specified by DRUID on the command line (separated by spaces) or in a plain-text
 file (one DRUID per line) or a CSV file (DRUIDs in the "Druid" column). For
 each roll, the script downloads the roll's IIIF manifest (JSON format) and an
-image of the rolls can from the Stanford Digital Repository (if these are not
+image of the roll scan from the Stanford Digital Repository (if these are not
 already cached in subfolders). Image file formats may vary by generation of the
 scans. Advanced features are also available to process locally downloaded image
 files if they have not yet been accessioned into the Stanford Digital Repository.
@@ -22,18 +22,18 @@ expressionized MIDI files.
 """
 
 import argparse
-from csv import DictReader
 import json
 import logging
 import os
-from pathlib import Path
 import re
+from csv import DictReader
+from pathlib import Path
 from shutil import copyfileobj
 
+import requests
 from lxml import etree
 from openjpeg import decode  # Necessary to read JPEG2000s
 from PIL import Image
-import requests
 
 # Otherwise Pillow will refuse to open large images
 Image.MAX_IMAGE_PIXELS = None
@@ -133,11 +133,10 @@ ROLLS_TO_SKIP = [
     "df354sy6634",  # Needs to be flipped vertically
     "xc735nd8093",  # Needs to be flipped vertically
     "sh954gz9635",  # Large section of white paper from repair makes it unparsable
-    "wb477ky1555",  # Green W incorrectly cataloged as Red
-    "pz737tz3677",  # Licensee incorrectly cataloged as Green
-    "yj176wj3359",  # Licensee incorrectly cataloged as Green
+    "wb477ky1555",  # Green W (T-98) incorrectly cataloged as Red (T-100)
+    "pz737tz3677",  # Licensee incorrectly cataloged as Green (T-98)
+    "yj176wj3359",  # Licensee incorrectly cataloged as Green (T-98)
     "sm367hr9769",  # Image(s) seem to be corrupted
-    "sj617nc3041",  # All images erroneously mirrored left-right
 ]
 
 TIFF2HOLES = "../roll-image-parser/bin/tiff2holes"
@@ -233,7 +232,7 @@ def get_iiif_manifest(druid, redownload_manifests=True):
             iiif_manifest = response.json()
             with iiif_filepath.open("w") as _fh:
                 json.dump(iiif_manifest, _fh)
-        except Exception as e:
+        except Exception:
             logging.info(f"Unable to download IIIF manifest for {druid}")
             iiif_manifest = None
     return iiif_manifest
@@ -286,6 +285,10 @@ def get_image_url(iiif_manifest):
             ) and (
                 rendering["format"] == "image/tiff"
                 or rendering["format"] == "image/x-tiff-big"
+            ):
+                return rendering["@id"]
+            if (rendering["@id"].endswith("_gr.jp2")) and (
+                rendering["format"] == "image/jp2"
             ):
                 return rendering["@id"]
 
