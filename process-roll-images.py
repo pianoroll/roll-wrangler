@@ -149,7 +149,7 @@ NS = {"x": "http://www.loc.gov/mods/v3"}
 
 
 def get_roll_type_for_druid(druid, redownload_xml):
-    """Obtains a .xml metadata file for the roll specified by DRUID     either
+    """Obtains a .xml metadata file for the roll specified by DRUID either
     from the local xml/ folder or the Stanford Digital Repository, then
     parses the XML to build the metadata dictionary for the roll.
     """
@@ -241,7 +241,7 @@ def get_iiif_manifest(druid, redownload_manifests=True):
 def get_image_url(iiif_manifest):
     """Finds the download URL for the highest-resolution TIFF image of the roll
     that is listed in the IIIF manifest data (usually this is a monochrome,
-    green-channel only TIFF image."""
+    green-channel only TIFF image)."""
 
     if iiif_manifest is None or (
         "sequences" not in iiif_manifest and "items" not in iiif_manifest
@@ -256,41 +256,43 @@ def get_image_url(iiif_manifest):
         seqs = iiif_manifest["items"]
 
     # Handle a variety of potential IIIF manifest formats for sequences/renderings/canvases
+    renderings = []
     for seq in seqs:
         if "renderings" in seq:
-            renderings = seq["renderings"]
+            renderings.extend(seq["renderings"])
         elif "rendering" not in seq:
             if "canvases" not in seq:
                 continue
-            renderings = [canvas["rendering"][0] for canvas in seq["canvases"]]
+            renderings.extend([canvas["rendering"][0] for canvas in seq["canvases"]])
         else:
-            renderings = seq["rendering"]
+            renderings.extend(seq["rendering"])
 
-        # If there's only one rendering (probably the original RGB), return it
-        if len(renderings) == 1:
-            if "id" in renderings[0]:
-                return renderings[0]["id"]
-            elif "@id" in renderings[0]:
-                return renderings[0]["@id"]
+    # If there's only one rendering (probably the original RGB), return it
+    if len(renderings) == 1:
+        if "id" in renderings[0]:
+            return renderings[0]["id"]
+        elif "@id" in renderings[0]:
+            return renderings[0]["@id"]
 
-        for rendering in renderings:
-            if (
-                rendering["@id"].endswith("_ir_sp.jp2")
-                or rendering["@id"].endswith("_gs.jp2")
-            ) and rendering["format"] == "image/jp2":
-                return rendering["@id"]
-            if (
-                rendering["@id"].endswith("_gr.tiff")
-                or rendering["@id"].endswith("_gr.tif")
-            ) and (
-                rendering["format"] == "image/tiff"
-                or rendering["format"] == "image/x-tiff-big"
-            ):
-                return rendering["@id"]
-            if (rendering["@id"].endswith("_gr.jp2")) and (
-                rendering["format"] == "image/jp2"
-            ):
-                return rendering["@id"]
+    for rendering in renderings:
+        if (
+            rendering["@id"].endswith("_Infrared.jp2")
+            or rendering["@id"].endswith("_ir_sp.jp2")
+            or rendering["@id"].endswith("_gs.jp2")
+        ) and rendering["format"] == "image/jp2":
+            return rendering["@id"]
+        if (
+            rendering["@id"].endswith("_gr.tiff")
+            or rendering["@id"].endswith("_gr.tif")
+        ) and (
+            rendering["format"] == "image/tiff"
+            or rendering["format"] == "image/x-tiff-big"
+        ):
+            return rendering["@id"]
+        if (rendering["@id"].endswith("_gr.jp2")) and (
+            rendering["format"] == "image/jp2"
+        ):
+            return rendering["@id"]
 
     logging.error("Unable to find image URL in IIIF manifest")
     return None
