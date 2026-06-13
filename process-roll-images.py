@@ -137,6 +137,7 @@ ROLLS_TO_SKIP = [
     "pz737tz3677",  # Licensee incorrectly cataloged as Green (T-98)
     "yj176wj3359",  # Licensee incorrectly cataloged as Green (T-98)
     "sm367hr9769",  # Image(s) seem to be corrupted
+    # "hd490vp4338",  # Temporary - problem with margin detection
 ]
 
 TIFF2HOLES = "../roll-image-parser/bin/tiff2holes"
@@ -431,7 +432,6 @@ def parse_roll_image(
     ignore_rewind_hole,
     tiff2holes,
     is_monochrome,
-    gen2scan,
 ):
     """Runs the external tiff2holes roll image parsing tool on roll image for
     the DRUID specified in the parameters, adding the appropriate command-line
@@ -446,8 +446,7 @@ def parse_roll_image(
 
     t2h_switches = ""
 
-    # Gen2 scans _should_ all be multi-channel
-    if is_monochrome and not gen2scan:
+    if is_monochrome:
         t2h_switches = "-m "
 
     if roll_type == "welte-red":
@@ -709,7 +708,6 @@ def main():
                 args.ignore_rewind_hole or (druid in IGNORE_REWIND_HOLE),
                 args.tiff2holes,
                 not args.multichannel_tiffs,
-                args.gen2scan,
             )
 
         extract_midi_from_analysis(druid, args.regenerate_midi, args.binasc)
