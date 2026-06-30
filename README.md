@@ -41,9 +41,14 @@ Note also the command-line arguments specifying where the `tiff2holes`,
 `binasc` and `midi2exp` executables can be found. These programs can be
 compiled from the following repositories:
 
-- `tiff2holes`: https://github.com/pianoroll/roll-image-parser
+- `tiff2holes`: https://github.com/sul-cidr/roll-image-parser
 - `binasc`: https://github.com/craigsapp/binasc
-- `midi2exp`: https://github.com/pianoroll/midi2exp
+- `midi2exp`: https://github.com/sul-cidr/midi2exp
+
+There are upstream versions of the first and last repositories under the
+https://github.com/pianoroll organization, but we recommend using the versions
+in https://github.com/sul-cidr instead, because they contain improvements not
+present in the upstream repositories.
 
 The downloaded roll images are stored in `images/` and the output MIDI files
 are written to `midi/raw/DRUID_raw.mid` (containing one MIDI message per
