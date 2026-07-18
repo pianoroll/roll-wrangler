@@ -120,7 +120,12 @@ IGNORE_REWIND_HOLE = [
 # This can be used in a last-ditch attempt to strongarm a roll's tracker
 # alignment after all of the other methods has been run. Negative values
 # shift the tracker assignments left, positives to the right.
-MANUAL_ALIGNMENT_CORRECTIONS = {}
+MANUAL_ALIGNMENT_CORRECTIONS = {
+    "jv485mx5227": 1,
+}
+
+# For rare rolls that should have a monochrome/IR version, but don't.
+NO_MONOCHROME = ["zc974rs0069"]
 
 # These are either duplicates of existing rolls, or rolls that are listed in
 # DRUIDs files but have disappeared from the catalog, or rolls that were
@@ -384,7 +389,11 @@ def get_roll_image(
             source_filepath = target_pathname
             image_filepath = target_pathname
 
-        if image_url.endswith(".jp2") and os.path.isfile(source_filepath):
+        if (
+            image_url.endswith(".jp2")
+            and os.path.isfile(source_filepath)
+            and not redownload_image
+        ):
             logging.info("JPEG2000 already downloaded")
         else:
             response = request_image(image_url)
@@ -447,7 +456,7 @@ def parse_roll_image(
 
     t2h_switches = ""
 
-    if is_monochrome:
+    if is_monochrome and druid not in NO_MONOCHROME:
         t2h_switches = "-m "
 
     if roll_type == "welte-red":
