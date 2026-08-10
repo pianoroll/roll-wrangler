@@ -115,6 +115,7 @@ IGNORE_REWIND_HOLE = [
     "pz737tz3677",
     "yj176wj3359",
     "pp228yz4317",
+    "pc228zw1709",
 ]
 
 # This can be used in a last-ditch attempt to strongarm a roll's tracker
@@ -266,6 +267,8 @@ def get_image_url(iiif_manifest):
     for seq in seqs:
         if "renderings" in seq:
             renderings.extend(seq["renderings"])
+        elif "canvases" in seq and "rendering" in seq["canvases"][0]:
+            renderings.extend(canvas["rendering"][0] for canvas in seq["canvases"])
         elif "rendering" not in seq:
             if "canvases" not in seq:
                 continue
@@ -525,13 +528,13 @@ def extract_midi_from_analysis(druid, regenerate_midi, binasc):
         # NOTE: the binasc utility *requires* a trailing blank line at the end
         # of the text input
         holes_data = (
-            re.search(r"^@HOLE_MIDIFILE:$(.*)", contents, re.M | re.S)
+            re.search(r"^@HOLE_MIDIFILE:$(.*)", contents, re.MULTILINE | re.DOTALL)
             .group(1)
             .split("\n@")[0]
         )
         convert_binasc_to_midi(holes_data, druid, "raw", binasc)
         notes_data = (
-            re.search(r"^@MIDIFILE:$(.*)", contents, re.M | re.S)
+            re.search(r"^@MIDIFILE:$(.*)", contents, re.MULTILINE | re.DOTALL)
             .group(1)
             .split("\n@")[0]
         )
