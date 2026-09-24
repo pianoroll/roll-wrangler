@@ -699,7 +699,7 @@ def main():
 
         logging.info(f"Downloading and processing {druid}...")
 
-        if (args.image_file):
+        if args.image_file != "":
             iiif_manifest = None
             image_url = args.image_file
         else:
