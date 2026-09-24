@@ -674,6 +674,11 @@ def main():
         action="store_true",
         help="Scan is from the updated camera (2024-)",
     )
+    argparser.add_argument(
+        "--image-file",
+        default="",
+        help="Path to a specific roll image already in images/, skipping all IIIF parsing and downloading",
+    )
 
     args = argparser.parse_args()
 
@@ -694,7 +699,12 @@ def main():
 
         logging.info(f"Downloading and processing {druid}...")
 
-        iiif_manifest = get_iiif_manifest(druid, args.redownload_manifests)
+        if (args.image_file):
+            iiif_manifest = None
+            image_url = args.image_file
+        else:
+            iiif_manifest = get_iiif_manifest(druid, args.redownload_manifests)
+            image_url = get_image_url(iiif_manifest)
 
         if args.roll_type != "NA":
             roll_type = args.roll_type
@@ -704,7 +714,7 @@ def main():
 
         roll_image = get_roll_image(
             druid,
-            get_image_url(iiif_manifest),
+            image_url,
             roll_type,
             args.redownload_images,
             args.mirror_images,
