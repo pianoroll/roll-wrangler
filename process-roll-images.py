@@ -445,6 +445,7 @@ def parse_roll_image(
     ignore_rewind_hole,
     tiff2holes,
     is_monochrome,
+    no_leader,
 ):
     """Runs the external tiff2holes roll image parsing tool on roll image for
     the DRUID specified in the parameters, adding the appropriate command-line
@@ -477,12 +478,16 @@ def parse_roll_image(
 
     if ignore_rewind_hole:
         t2h_switches += " -s"
+    
+    if no_leader:
+        t2h_switches += " -n"
 
     if druid in MANUAL_ALIGNMENT_CORRECTIONS:
         t2h_switches += f" --alignment-shift={MANUAL_ALIGNMENT_CORRECTIONS[druid]}"
 
     cmd = f"{tiff2holes} {t2h_switches} {image_filepath} > txt/{druid}.txt 2> logs/{druid}.err"
     logging.info(f"Running image parser on {image_filepath} (roll type {roll_type})")
+    print(cmd)
     os.system(cmd)
 
 
@@ -679,7 +684,11 @@ def main():
         default="",
         help="Path to a specific roll image already in images/, skipping all IIIF parsing and downloading",
     )
-
+    argparser.add_argument(
+        "--no-leader",
+        action="store_true",
+        help="Tell the image parser that the roll image has no leader",
+    )
     args = argparser.parse_args()
 
     # Adding DRUIDs here will override user input
@@ -731,6 +740,7 @@ def main():
                 args.ignore_rewind_hole or (druid in IGNORE_REWIND_HOLE),
                 args.tiff2holes,
                 not args.multichannel_tiffs,
+                args.no_leader,
             )
 
         extract_midi_from_analysis(druid, args.regenerate_midi, args.binasc)
