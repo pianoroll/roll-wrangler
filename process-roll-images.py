@@ -116,6 +116,7 @@ IGNORE_REWIND_HOLE = [
     "yj176wj3359",
     "pp228yz4317",
     "pc228zw1709",
+    "st828pc9818",
 ]
 
 # This can be used in a last-ditch attempt to strongarm a roll's tracker
@@ -478,7 +479,7 @@ def parse_roll_image(
 
     if ignore_rewind_hole:
         t2h_switches += " -s"
-    
+
     if no_leader:
         t2h_switches += " -n"
 
